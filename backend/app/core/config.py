@@ -18,8 +18,10 @@ from __future__ import annotations
 import secrets
 from pathlib import Path
 
+from typing import Annotated
+
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Per-process fallback secret, used to sign certificate download tokens when no
 # explicit api_secret_key is configured. Regenerated each restart — acceptable
@@ -43,13 +45,22 @@ class Settings(BaseSettings):
     app_title: str = "Internship Report Reviewer"
     app_version: str = "1.0.0"
 
-    cors_origins: list[str] = Field(
+    # NoDecode is load-bearing. Without it pydantic-settings JSON-decodes a
+    # list field straight out of the environment, before any validator runs —
+    # so REVIEW_CORS_ORIGINS=https://dash.example.com raises a SettingsError at
+    # import time and the container crash-loops on a value a person would
+    # reasonably type. With it, the raw string reaches _parse_origins below and
+    # both forms work.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
         default=[
             "http://localhost:5173",
             "http://127.0.0.1:5173",
             "http://localhost:80",
         ],
-        description="Allowed browser origins. Override via REVIEW_CORS_ORIGINS.",
+        description=(
+            "Allowed browser origins. Accepts a JSON array or a plain "
+            "comma-separated list."
+        ),
     )
 
     # ------------------------------------------------------------------ #
@@ -123,11 +134,17 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def _split_origins(cls, v):
-        """Accept a comma-separated string from the environment."""
-        if isinstance(v, str) and not v.strip().startswith("["):
-            return [part.strip() for part in v.split(",") if part.strip()]
-        return v
+    def _parse_origins(cls, v):
+        """Accept a JSON array, a comma-separated list, or a single origin."""
+        if not isinstance(v, str):
+            return v
+
+        text = v.strip()
+        if text.startswith("["):
+            import json
+
+            return json.loads(text)
+        return [part.strip() for part in text.split(",") if part.strip()]
 
 
 # Module-level singleton — import this everywhere.

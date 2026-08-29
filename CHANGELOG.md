@@ -30,6 +30,13 @@ All notable changes to the Internship Report Reviewer.
   scenarios, failures included.
 - 55 tests, hermetic and offline.
 
+### Fixed
+- `REVIEW_CORS_ORIGINS` crashed the service at import time unless it was valid
+  JSON: pydantic-settings decodes list fields straight from the environment,
+  before any validator runs, so a plain `https://dash.example.com` raised a
+  SettingsError and the container crash-looped. Annotated with `NoDecode` so a
+  JSON array, a comma-separated list and a single origin all work.
+
 ### Notes
 - Extracted from the Agentic Internship Coordinator, where this was first built
   as a second phase. Kept as its own service so it can be deployed and reasoned
