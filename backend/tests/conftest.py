@@ -29,3 +29,34 @@ settings.storage_root = _TEST_ROOT / "tasks"
 # TestClient(app) at module level does not run the lifespan hook that would
 # otherwise create the table.
 report_repository.init_db()
+
+
+# ---------------------------------------------------------------------------
+# Generated document packages
+# ---------------------------------------------------------------------------
+
+import sys  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+
+import pytest  # noqa: E402
+
+# The generator lives outside the backend package: it is a tool for producing
+# test documents, not part of the service.
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2] / "testdocs" / "tool"))
+
+from completion_docs import generate  # noqa: E402
+
+
+@pytest.fixture(scope="session")
+def packages(tmp_path_factory):
+    """The generated scenarios, built once for the whole run.
+
+    Session-scoped because rendering nine PDFs per module is slower than the
+    tests that use them. Shared here rather than in one test module so the
+    graph tests can reach for the same clean package.
+    """
+    base = tmp_path_factory.mktemp("completion")
+    return {
+        name: generate(name, base / name)
+        for name in ("clean", "short-days", "unsigned", "name-mismatch")
+    }

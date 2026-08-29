@@ -233,6 +233,23 @@ export default function CompletionDetails({ selected, loading }) {
                       </p>
                     )}
 
+                  {/* Things the prose claims that the verified record does not
+                      support. Deliberately styled no louder than the rest: a
+                      model noticing something is a reason to ask, not a
+                      finding, and the layout should not suggest otherwise. */}
+                  {advisory.inconsistencies?.length > 0 && (
+                    <>
+                      <p className="advisoryLine">
+                        <strong>Does not match the record</strong>
+                      </p>
+                      <ul className="advisoryQuestions">
+                        {advisory.inconsistencies.map((i) => (
+                          <li key={i}>{i}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
                   {advisory.questions_for_coordinator?.length > 0 && (
                     <>
                       <p className="advisoryLine">
@@ -247,8 +264,10 @@ export default function CompletionDetails({ selected, loading }) {
                   )}
 
                   <p className="advisoryNote">
-                    Written by the model after the decision was already made. It
-                    did not affect the status above, and nothing here can.
+                    Read by a model after the decision was already made — in
+                    three passes: what the report describes, whether it matches
+                    the verified record, and what is worth asking. None of it
+                    affected the status above, and nothing here can.
                   </p>
                 </>
               ) : (

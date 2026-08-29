@@ -16,4 +16,11 @@ pillow==12.2.0         # normalise the signature image before embedding
 
 # --- AI (advisory reading + email drafting only; the decision never uses it) ---
 openai==2.41.0
-# langfuse            # optional: uncomment to trace model calls
+
+# The advisory reading is a three-step graph, not one call — see
+# app/agents/review_graph.py. Pure Python, ~40 MB in the image.
+langgraph==1.2.11
+
+# Tracing. Dormant unless LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY are set,
+# and app/core/llm.py swaps the client for the traced one at that point.
+langfuse==4.15.1

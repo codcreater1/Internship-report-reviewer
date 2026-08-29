@@ -35,6 +35,19 @@ So the split is:
 
 The model reads the report, raises questions for the coordinator, and drafts the student's email. It runs *after* the status is already fixed, and **the service decides identically with it switched off** — deleting your API key changes nothing about who gets a certificate.
 
+The reading is a [LangGraph](backend/app/agents/review_graph.py) workflow in three passes, because reading a report well is three different jobs:
+
+```
+prepare ──▶ comprehend ──▶ audit ──▶ question ──▶ assemble
+(no model)  what did      does the   what should  (no model)
+            they do?      prose match a person
+                          the numbers? ask?
+```
+
+The middle pass earns its tokens. Deterministic checks compare *documents* — a date against a period, a name against a name. They cannot read a sentence. A report claiming "over the four months I spent here" against a verified six-week placement is a discrepancy in prose, and prose is what a model is good at. Those reach the coordinator as questions, never as findings: a model's suspicion is not evidence.
+
+With `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` set, each pass is traced separately so you can see which one spends what.
+
 That has a practical payoff: **a package is never held because an API was down.** Systems where the model produces the score do not get that for free.
 
 ---

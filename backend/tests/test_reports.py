@@ -423,15 +423,6 @@ def test_every_actionable_finding_carries_a_remedy(verifier, report, evaluation,
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture(scope="module")
-def packages(tmp_path_factory) -> dict[str, list[Path]]:
-    base = tmp_path_factory.mktemp("completion")
-    return {
-        name: generate(name, base / name)
-        for name in ("clean", "short-days", "unsigned", "name-mismatch")
-    }
-
-
 @pytest.fixture(autouse=True)
 def isolated_service():
     """Give each API test a private originality corpus.

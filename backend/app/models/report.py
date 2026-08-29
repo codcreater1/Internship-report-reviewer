@@ -180,6 +180,14 @@ class AdvisoryReview(BaseModel):
         description="The model's view of technical specificity. Never gates a decision.",
     )
     role_alignment: str = ""
+    inconsistencies: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Statements in the report that contradict the verified record, or that "
+            "it cannot support. Advisory: these are things to ask about, never "
+            "findings — a model's suspicion is not evidence."
+        ),
+    )
     questions_for_coordinator: list[str] = Field(default_factory=list)
 
 

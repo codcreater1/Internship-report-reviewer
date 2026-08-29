@@ -37,6 +37,13 @@ All notable changes to the Internship Report Reviewer.
   SettingsError and the container crash-looped. Annotated with `NoDecode` so a
   JSON array, a comma-separated list and a single origin all work.
 
+### Added
+- Advisory reading is now a LangGraph workflow in three passes — comprehend,
+  audit, question — instead of one call. The audit pass compares the report's
+  prose against the verified record, which no deterministic check can do; its
+  output reaches the coordinator as questions, never as findings.
+- LangFuse tracing wired through, one trace per pass. Dormant without keys.
+
 ### Changed
 - Dashboard redesigned: top bar instead of a navigation sidebar, three working
   columns, a bronze accent taken from the certificate itself, tabular figures,
