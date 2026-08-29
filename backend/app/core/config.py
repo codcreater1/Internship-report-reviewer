@@ -1,0 +1,134 @@
+"""Runtime configuration — every tunable lives here, sourced from environment.
+
+Override any value with the ``REVIEW_`` prefix::
+
+    REVIEW_MIN_WORKING_DAYS=30 uvicorn app.main:app
+
+or from a ``.env`` file (gitignored) for local development.
+
+Thresholds that decide whether a package passes live in
+:mod:`app.core.report_constants` instead. The split is deliberate: this file
+holds deployment settings — where things are stored, which model to call, who
+may call us — while that file holds the institution's rules, which are read by
+people arguing about whether twenty days is the right number.
+"""
+
+from __future__ import annotations
+
+import secrets
+from pathlib import Path
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Per-process fallback secret, used to sign certificate download tokens when no
+# explicit api_secret_key is configured. Regenerated each restart — acceptable
+# because tokens are short-lived, but it means links break on restart and do
+# not work across multiple workers. Set REVIEW_API_SECRET_KEY in a real
+# deployment; an HMAC keyed on "" is not a signature.
+_FALLBACK_SECRET = secrets.token_hex(32)
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="REVIEW_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # ------------------------------------------------------------------ #
+    # Service identity
+    # ------------------------------------------------------------------ #
+    app_title: str = "Internship Report Reviewer"
+    app_version: str = "1.0.0"
+
+    cors_origins: list[str] = Field(
+        default=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:80",
+        ],
+        description="Allowed browser origins. Override via REVIEW_CORS_ORIGINS.",
+    )
+
+    # ------------------------------------------------------------------ #
+    # Storage
+    # ------------------------------------------------------------------ #
+    storage_root: Path = Field(
+        default=Path(__file__).resolve().parent.parent.parent / "tmp",
+        description="Root directory for per-submission working directories.",
+    )
+
+    db_path: Path = Field(
+        default=Path(__file__).resolve().parent.parent.parent / "submissions.db",
+        description="SQLite file storing reviewed submissions.",
+    )
+
+    # ------------------------------------------------------------------ #
+    # Upload limits
+    # ------------------------------------------------------------------ #
+    max_pdf_bytes: int = Field(
+        default=15 * 1024 * 1024,
+        gt=0,
+        description="Maximum accepted size for one attachment.",
+    )
+    max_image_bytes: int = Field(
+        default=5 * 1024 * 1024,
+        gt=0,
+        description="Maximum accepted signature image size.",
+    )
+    read_chunk_bytes: int = Field(default=256 * 1024, gt=0)
+
+    # ------------------------------------------------------------------ #
+    # AI (OpenAI-compatible — advisory reading and email drafting only)
+    # ------------------------------------------------------------------ #
+    llm_base_url: str = Field(
+        default="https://generativelanguage.googleapis.com/v1beta/openai/",
+        description="OpenAI-compatible API base URL (Google Gemini by default).",
+    )
+    llm_model: str = Field(
+        default="gemini-2.0-flash",
+        description="Model used for the advisory reading and email drafting.",
+    )
+    report_language: str = Field(
+        default="English",
+        description="Language the model writes student emails and readings in.",
+    )
+
+    # ------------------------------------------------------------------ #
+    # Security
+    # ------------------------------------------------------------------ #
+    api_secret_key: str = Field(
+        default="",
+        description=(
+            "If non-empty, /reports/from-n8n requires 'Authorization: Bearer <key>'. "
+            "Also signs certificate download tokens."
+        ),
+    )
+
+    @property
+    def signing_secret(self) -> str:
+        """Secret used to sign download tokens — the configured key, or a
+        per-process random fallback so tokens are never signed with ''."""
+        return self.api_secret_key or _FALLBACK_SECRET
+
+    # ------------------------------------------------------------------ #
+    # Validators
+    # ------------------------------------------------------------------ #
+    @field_validator("storage_root", "db_path", mode="before")
+    @classmethod
+    def _resolve_path(cls, v: str | Path) -> Path:
+        return Path(v).resolve()
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, v):
+        """Accept a comma-separated string from the environment."""
+        if isinstance(v, str) and not v.strip().startswith("["):
+            return [part.strip() for part in v.split(",") if part.strip()]
+        return v
+
+
+# Module-level singleton — import this everywhere.
+settings = Settings()

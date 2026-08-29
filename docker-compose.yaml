@@ -1,0 +1,31 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      # Submissions and certificates must survive a redeploy.
+      - review_data:/data
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY}
+      - REVIEW_LLM_BASE_URL=${LLM_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      - REVIEW_LLM_MODEL=${LLM_MODEL:-gemini-2.0-flash}
+      - REVIEW_CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:80"]}
+      - REVIEW_API_SECRET_KEY=${API_SECRET_KEY:-}
+      - REVIEW_STORAGE_ROOT=/data/tmp
+      - REVIEW_DB_PATH=/data/submissions.db
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+
+volumes:
+  review_data:

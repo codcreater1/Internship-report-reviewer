@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv*/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Runtime state — submitted student documents and generated certificates live
+# here. Never commit them.
+backend/submissions.db
+backend/tmp/
+samples/
+
+# Node
+node_modules/
+frontend/dist/
+dist/
+
+# Local configuration
+.env
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
