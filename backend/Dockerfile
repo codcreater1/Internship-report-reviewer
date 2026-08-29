@@ -2,14 +2,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# PyMuPDF needs these at runtime to read the submitted PDFs.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Certificates print real student names, and Helvetica's WinAnsi encoding has
-# no glyphs for ł, ą, ę, ś, ż, ń or ğ, ş, ı. DejaVu is what the certificate
-# renderer looks for first; without it names fall back to transliteration.
+# Fonts, and nothing else. Certificates print real student names, and
+# Helvetica's WinAnsi encoding has no glyphs for ł, ą, ę, ś, ż, ń or ğ, ş, ı —
+# without a Unicode face those names fall back to transliteration.
+#
+# Notably NOT libgl1/libglib2.0-0. Those are the OpenCV recipe and get pasted
+# into any Dockerfile that touches images. Reading the wheels' ELF headers says
+# otherwise: PyMuPDF links only libc, libstdc++ and its own bundled libmupdf,
+# and Pillow vendors all 26 of its dependencies. libgl1 alone pulled in llvm19,
+# mesa, libdrm and libvulkan — hundreds of megabytes to render nothing.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*

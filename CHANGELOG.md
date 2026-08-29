@@ -37,6 +37,15 @@ All notable changes to the Internship Report Reviewer.
   SettingsError and the container crash-looped. Annotated with `NoDecode` so a
   JSON array, a comma-separated list and a single origin all work.
 
+### Changed
+- Backend image no longer installs `libgl1`/`libglib2.0-0`. Reading the ELF
+  headers of the PyMuPDF and Pillow wheels shows neither links against them —
+  PyMuPDF needs only libc, libstdc++ and its own bundled libmupdf, and Pillow
+  vendors all of its dependencies. `libgl1` was pulling in llvm19, mesa, libdrm
+  and libvulkan for nothing.
+- `pytest` and `httpx` moved to `requirements-dev.txt`; the production image
+  installed a test runner it never runs.
+
 ### Notes
 - Extracted from the Agentic Internship Coordinator, where this was first built
   as a second phase. Kept as its own service so it can be deployed and reasoned

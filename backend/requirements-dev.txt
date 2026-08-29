@@ -1,0 +1,7 @@
+# Test-only dependencies. Deliberately not in requirements.txt: the Dockerfile
+# installs that file into the production image, and a test runner has no
+# business shipping to a server.
+-r requirements.txt
+
+pytest==8.3.4
+httpx==0.28.1

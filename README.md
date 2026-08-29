@@ -139,6 +139,9 @@ Intake failures **short-circuit**: if the evaluation form is missing, the pipeli
 cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
 ```
 
+For the tests, `pip install -r backend/requirements-dev.txt` — pytest and httpx
+are kept out of `requirements.txt` so they do not ship in the production image.
+
 ```bash
 cd frontend && npm install && npm run dev
 ```

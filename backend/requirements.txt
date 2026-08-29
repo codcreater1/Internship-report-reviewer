@@ -17,7 +17,3 @@ pillow==12.2.0         # normalise the signature image before embedding
 # --- AI (advisory reading + email drafting only; the decision never uses it) ---
 openai==2.41.0
 # langfuse            # optional: uncomment to trace model calls
-
-# --- Tests ---
-pytest==8.3.4
-httpx==0.28.1
