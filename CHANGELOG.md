@@ -38,6 +38,10 @@ All notable changes to the Internship Report Reviewer.
   JSON array, a comma-separated list and a single origin all work.
 
 ### Changed
+- Dashboard redesigned: top bar instead of a navigation sidebar, three working
+  columns, a bronze accent taken from the certificate itself, tabular figures,
+  dark/light themes, and Inter bundled into the build rather than fetched from
+  a CDN.
 - Backend image no longer installs `libgl1`/`libglib2.0-0`. Reading the ELF
   headers of the PyMuPDF and Pillow wheels shows neither links against them —
   PyMuPDF needs only libc, libstdc++ and its own bundled libmupdf, and Pillow

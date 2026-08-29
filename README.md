@@ -186,7 +186,15 @@ A held or rejected package returns **HTTP 201 with the status in the body**, not
 
 ## Dashboard
 
-React + Vite. The queue is grouped by **who has to act next** — *To sign*, *With student*, *Signed* — rather than by raw status, because that is the question when you are working a queue.
+React + Vite. Dark by default, light on request, and it follows the system
+preference until you pick one. Inter is bundled into the build rather than
+pulled from a font CDN — the app should look right inside a university network
+with no route to the open internet.
+
+There is no navigation sidebar: this service does one thing, so the width goes
+to findings text and document hashes instead. The queue is grouped by **who has
+to act next** — *To sign*, *With student*, *Signed* — rather than by raw status,
+because that is the question when you are working a queue.
 
 Opening a submission shows the figures the certificate would assert, the findings grouped by what they demand (things the student must fix separated from things the coordinator should decide), the exact wording the student was emailed, and the three PDFs with their hashes.
 

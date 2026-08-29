@@ -1,7 +1,7 @@
 import {
   AlertCircle,
   Brain,
-  CalendarCheck,
+  CheckCircle2,
   FileText,
   GraduationCap,
   Info,
@@ -20,56 +20,66 @@ function initials(name = "") {
   return name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
 }
 
-// Findings are grouped by what they demand rather than listed flat: a
-// coordinator needs to separate "the student must fix this" from "you should
-// look at this" before reading a single message.
+// Findings are grouped by what they demand rather than listed flat. Working a
+// queue, the question is never "what is wrong" — it is "whose move is it".
 const GROUPS = [
   {
     severity: "reject",
     title: "Cannot be approved",
     icon: ShieldAlert,
-    className: "findingGroup bad",
     note: "Resending will not clear these. They need a conversation with the student.",
   },
   {
     severity: "clarify",
     title: "Waiting on the student",
     icon: AlertCircle,
-    className: "findingGroup warn",
-    note: "The student has been emailed exactly these points and can resend once fixed.",
+    note: "The student was emailed exactly these points and can resend once fixed.",
   },
   {
     severity: "warning",
     title: "Open points for you",
     icon: Info,
-    className: "findingGroup warn",
-    note: "Nothing here blocks a signature, but each needs a decision before you give one.",
+    note: "None of these block a signature, but each wants a decision before you give one.",
   },
-  {
-    severity: "info",
-    title: "Notes",
-    icon: Info,
-    className: "findingGroup",
-    note: null,
-  },
+  { severity: "info", title: "Notes", icon: Info, note: null },
 ];
+
+const BANNER_TONE = {
+  approved: "ok",
+  signed: "accent",
+  pending: "warn",
+  request_clarification: "warn",
+  rejected: "danger",
+};
+
+const BANNER_ICON = {
+  approved: CheckCircle2,
+  signed: CheckCircle2,
+  pending: Info,
+  request_clarification: AlertCircle,
+  rejected: ShieldAlert,
+};
 
 export default function CompletionDetails({ selected, loading }) {
   if (loading && !selected) {
     return (
-      <div className="panel profile">
-        <div className="empty big">Loading submission...</div>
+      <div className="col">
+        <div className="empty">
+          <p>Loading submission…</p>
+        </div>
       </div>
     );
   }
 
   if (!selected) {
     return (
-      <div className="panel profile">
-        <div className="empty big">
-          <GraduationCap size={52} />
-          <h2>Select a submission</h2>
-          <p>The internship record will open here.</p>
+      <div className="col">
+        <div className="empty">
+          <div className="emptyIcon">
+            <GraduationCap size={22} />
+          </div>
+          <h3>Select a submission</h3>
+          <p>The internship record opens here.</p>
         </div>
       </div>
     );
@@ -77,192 +87,220 @@ export default function CompletionDetails({ selected, loading }) {
 
   const findings = selected.findings || [];
   const advisory = selected.advisory;
+  const BannerIcon = BANNER_ICON[selected.status] || Info;
 
   return (
-    <div className="panel profile">
-      <div className="profileTop">
-        <span className="caseLabel">{selected.student_id || "no student id"}</span>
+    <div className="col">
+      <div className="colScroll">
+        <div className="detailHead" style={{ paddingLeft: 0, paddingRight: 0 }}>
+          <div className="detailTop">
+            <div className="avatar lg">{initials(selected.student_name || "?")}</div>
+            <div style={{ minWidth: 0 }}>
+              <h2 className="detailName">{selected.student_name || "Unnamed student"}</h2>
+              <div className="detailSub">
+                <span className="idChip">{selected.student_id || "no id"}</span>
+                <span>{selected.intern_email}</span>
+                <span className={`status ${selected.status}`}>
+                  <span className="dot" />
+                  {reportStatusLabel(selected.status)}
+                </span>
+              </div>
+            </div>
+          </div>
 
-        <div className="profileHeading">
-          <div className="avatar large">{initials(selected.student_name || "?")}</div>
-          <div>
-            <h2>{selected.student_name || "Unnamed student"}</h2>
-            <p>{selected.intern_email}</p>
+          <div className={`banner ${BANNER_TONE[selected.status] || ""}`}>
+            <BannerIcon size={16} />
+            <p>{REPORT_STATUS_SUMMARY[selected.status] || selected.report}</p>
           </div>
         </div>
 
-        <span className={`stamp ${selected.status}`}>
-          <span className="stampDot" />
-          {reportStatusLabel(selected.status)}
-        </span>
-      </div>
-
-      <div className="statusNote">
-        <CalendarCheck size={17} />
-        <p>{REPORT_STATUS_SUMMARY[selected.status] || selected.report}</p>
-      </div>
-
-      {/* The verified figures — what the certificate would actually assert. */}
-      <div className="verifiedGrid">
-        <div className="miniPanel">
-          <p>Attended working days</p>
-          <h3>
-            {selected.counted_working_days}
-            <small> / {selected.total_hours}h</small>
-          </h3>
+        {/* The figures the certificate would assert. */}
+        <div className="stats">
+          <div className="stat">
+            <div className="statLabel">Working days</div>
+            <div className="statValue">
+              {selected.counted_working_days}
+              <small>days · {selected.total_hours}h</small>
+            </div>
+          </div>
+          <div className="stat">
+            <div className="statLabel">Employer score</div>
+            <div className="statValue">
+              {selected.evaluation_score ?? "—"}
+              {selected.evaluation_score !== null && <small>/100</small>}
+            </div>
+          </div>
+          <div className="stat">
+            <div className="statLabel">Report length</div>
+            <div className="statValue">
+              {selected.report_word_count}
+              <small>words</small>
+            </div>
+          </div>
+          <div className="stat">
+            <div className="statLabel">Peak similarity</div>
+            <div className="statValue">
+              {Math.round((selected.max_similarity || 0) * 100)}
+              <small>%</small>
+            </div>
+          </div>
         </div>
-        <div className="miniPanel">
-          <p>Employer evaluation</p>
-          <h3>
-            {selected.evaluation_score ?? "—"}
-            {selected.evaluation_score !== null && <small> / 100</small>}
-          </h3>
-        </div>
-        <div className="miniPanel">
-          <p>Report length</p>
-          <h3>
-            {selected.report_word_count}
-            <small> words</small>
-          </h3>
-        </div>
-        <div className="miniPanel">
-          <p>Peak similarity</p>
-          <h3>{Math.round((selected.max_similarity || 0) * 100)}%</h3>
-        </div>
-      </div>
 
-      <div className="split">
-        <div className="miniPanel">
-          <p>Host organisation</p>
-          <h3>{selected.company || "—"}</h3>
+        <div className="metaGrid">
+          <div className="meta">
+            <div className="metaLabel">Host organisation</div>
+            <div className="metaValue">{selected.company || "—"}</div>
+          </div>
+          <div className="meta">
+            <div className="metaLabel">Internship period</div>
+            <div className="metaValue tnum">
+              {selected.start_date || "—"} → {selected.end_date || "—"}
+            </div>
+          </div>
         </div>
-        <div className="miniPanel">
-          <p>Internship period</p>
-          <h3>
-            {selected.start_date || "—"} → {selected.end_date || "—"}
-          </h3>
-        </div>
-      </div>
 
-      {/* Findings, grouped by what they demand. */}
-      {GROUPS.map((group) => {
-        const items = findings.filter((f) => f.severity === group.severity);
-        if (items.length === 0) return null;
-        const Icon = group.icon;
+        {GROUPS.map((group) => {
+          const items = findings.filter((f) => f.severity === group.severity);
+          if (items.length === 0) return null;
+          const Icon = group.icon;
 
-        return (
-          <div key={group.severity} className={group.className}>
-            <h3>
-              <Icon size={15} /> {group.title}
-              <span className="findingCount">{items.length}</span>
-            </h3>
-            {group.note && <p className="findingNote">{group.note}</p>}
+          return (
+            <section key={group.severity} className="section">
+              <div className="sectionHead">
+                <Icon size={14} />
+                <h3>{group.title}</h3>
+                <span className="sectionCount">{items.length}</span>
+              </div>
+              {group.note && <p className="sectionNote">{group.note}</p>}
 
-            <ul className="findingList">
-              {items.map((f) => (
-                <li key={f.code}>
-                  <div className="findingHead">
-                    <code>{f.code}</code>
-                    <span className={`sevTag ${f.severity}`}>
-                      {severityLabel(f.severity)}
-                    </span>
-                  </div>
-                  <p>{f.message}</p>
-                  {f.remedy && (
-                    <p className="findingRemedy">
-                      <strong>Student was told:</strong> {f.remedy}
+              <div className="findings">
+                {items.map((f) => (
+                  <article key={f.code} className={`finding ${f.severity}`}>
+                    <div className="findingTop">
+                      <span className="findingCode">{f.code}</span>
+                      <span className={`sevChip ${f.severity}`}>
+                        {severityLabel(f.severity)}
+                      </span>
+                    </div>
+                    <p className="findingMsg">{f.message}</p>
+                    {f.remedy && (
+                      <p className="remedy">
+                        <strong>Student was told:</strong> {f.remedy}
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
+        {findings.length === 0 && (
+          <section className="section">
+            <div className="sectionHead">
+              <CheckCircle2 size={14} />
+              <h3>Findings</h3>
+            </div>
+            <p className="sectionNote">
+              Every check passed. Nothing was raised against this submission.
+            </p>
+          </section>
+        )}
+
+        {advisory && (
+          <section className="section">
+            <div className="sectionHead">
+              <Brain size={14} />
+              <h3>Advisory reading</h3>
+            </div>
+
+            <div className="advisory">
+              {advisory.available ? (
+                <>
+                  <p>{advisory.summary}</p>
+
+                  {advisory.role_alignment && (
+                    <p className="advisoryLine">
+                      <strong>Role alignment</strong> — {advisory.role_alignment}
                     </p>
                   )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
 
-      {findings.length === 0 && (
-        <div className="findingGroup ok">
-          <h3>
-            <CalendarCheck size={15} /> No findings
-          </h3>
-          <p className="findingNote">
-            Every check passed. Nothing was raised against this submission.
-          </p>
-        </div>
-      )}
+                  {advisory.depth_rating !== null &&
+                    advisory.depth_rating !== undefined && (
+                      <p className="advisoryLine">
+                        <strong>Technical depth</strong> —{" "}
+                        <span className="tnum">{advisory.depth_rating}</span>/100
+                      </p>
+                    )}
 
-      {/* Advisory reading — explicitly labelled as not part of the decision. */}
-      {advisory && (
-        <div className="report advisory">
-          <h3>
-            <Brain size={15} /> Advisory reading
-          </h3>
-          {advisory.available ? (
-            <>
-              <p>{advisory.summary}</p>
-              {advisory.role_alignment && (
-                <p className="advisoryLine">
-                  <strong>Role alignment:</strong> {advisory.role_alignment}
+                  {advisory.questions_for_coordinator?.length > 0 && (
+                    <>
+                      <p className="advisoryLine">
+                        <strong>Worth asking</strong>
+                      </p>
+                      <ul className="advisoryQuestions">
+                        {advisory.questions_for_coordinator.map((q) => (
+                          <li key={q}>{q}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  <p className="advisoryNote">
+                    Written by the model after the decision was already made. It
+                    did not affect the status above, and nothing here can.
+                  </p>
+                </>
+              ) : (
+                <p className="advisoryNote" style={{ marginTop: 0, borderTop: "none", paddingTop: 0 }}>
+                  {advisory.summary}
                 </p>
               )}
-              {advisory.depth_rating !== null &&
-                advisory.depth_rating !== undefined && (
-                  <p className="advisoryLine">
-                    <strong>Technical depth:</strong> {advisory.depth_rating}/100
-                  </p>
-                )}
-              {advisory.questions_for_coordinator?.length > 0 && (
-                <>
-                  <p className="advisoryLine">
-                    <strong>Worth asking:</strong>
-                  </p>
-                  <ul className="advisoryQuestions">
-                    {advisory.questions_for_coordinator.map((q) => (
-                      <li key={q}>{q}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              <p className="advisoryFoot">
-                Written by the model after the decision was already made. It did
-                not affect the status above.
-              </p>
-            </>
-          ) : (
-            <p className="advisoryFoot">{advisory.summary}</p>
-          )}
-        </div>
-      )}
+            </div>
+          </section>
+        )}
 
-      {/* The submitted documents themselves. */}
-      {selected.documents?.length > 0 && (
-        <div className="docList">
-          <h3>
-            <FileText size={15} /> Submitted documents
-          </h3>
-          {selected.documents.map((doc) => (
-            <a
-              key={doc.sha256}
-              className="docRow"
-              href={reportAttachmentUrl(selected.id, doc.role)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <div>
-                <strong>{DOCUMENT_LABELS[doc.role] || doc.role}</strong>
-                <small>
-                  {doc.filename} · {doc.page_count} pp
-                </small>
-              </div>
-              <code title={doc.sha256}>{doc.sha256.slice(0, 12)}…</code>
-            </a>
-          ))}
-          <p className="findingNote">
-            The signed certificate carries the hash of these exact files, so it
-            cannot be detached from what it attests to.
-          </p>
-        </div>
-      )}
+        {selected.documents?.length > 0 && (
+          <section className="section">
+            <div className="sectionHead">
+              <FileText size={14} />
+              <h3>Submitted documents</h3>
+            </div>
+
+            <div className="docs">
+              {selected.documents.map((doc) => (
+                <a
+                  key={doc.sha256}
+                  className="doc"
+                  href={reportAttachmentUrl(selected.id, doc.role)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <div className="docIcon">
+                    <FileText size={15} />
+                  </div>
+                  <div className="docMain">
+                    <div className="docRole">
+                      {DOCUMENT_LABELS[doc.role] || doc.role}
+                    </div>
+                    <div className="docName">
+                      {doc.filename} · {doc.page_count} pp
+                    </div>
+                  </div>
+                  <code className="docHash" title={doc.sha256}>
+                    {doc.sha256.slice(0, 10)}…
+                  </code>
+                </a>
+              ))}
+            </div>
+
+            <p className="sectionNote" style={{ marginTop: 10, marginBottom: 0 }}>
+              The signed certificate carries the hash of these exact files, so it
+              cannot be detached from what it attests to.
+            </p>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

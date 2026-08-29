@@ -1,19 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Award,
-  CheckCircle2,
-  Download,
-  Lock,
-  PenLine,
-  ShieldAlert,
-} from "lucide-react";
+import { Award, Download, Lock, PenLine, ShieldAlert } from "lucide-react";
 
 import { certificateUrl, signCertificate } from "../services/reportsApi";
 
 // Remembered across submissions: a coordinator signing a queue should not
-// retype their own name for every student. Stored locally only — the backend
-// records it per signature.
-const NAME_KEY = "aic.coordinatorName";
+// retype their own name for every student. Local to this browser only — the
+// backend records the name against each signature.
+const NAME_KEY = "irr.coordinatorName";
 
 export default function CertificatePanel({ selected, refresh }) {
   const canvasRef = useRef(null);
@@ -28,30 +21,38 @@ export default function CertificatePanel({ selected, refresh }) {
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState("");
 
-  // Configure the drawing context once. Per-submission state is not reset here:
-  // App gives this component a key of the submission id, so switching rows
-  // remounts it and every useState above starts fresh. Resetting inside an
-  // effect would do the same thing a render later, and wrongly.
+  // Configure the drawing context once. Per-submission state is not reset
+  // here: App keys this component on the submission id, so switching rows
+  // remounts it and every useState above starts fresh.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    // Match the backing store to the displayed size so strokes are crisp on
+    // high-DPI screens and land where the cursor is.
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+
     const ctx = canvas.getContext("2d");
-    ctx.lineWidth = 2.5;
+    ctx.scale(dpr, dpr);
+    ctx.lineWidth = 2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = "#13111a";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#14161a";
   }, []);
 
   if (!selected) {
     return (
-      <div className="panel contract">
-        <div className="panelHead">
-          <div>
-            <h3>Certificate</h3>
-            <p>Completion &amp; signature</p>
-          </div>
+      <aside className="col action">
+        <div className="colHead">
+          <p className="colTitle">Certificate</p>
         </div>
-        <div className="empty">Select a submission to issue its certificate.</div>
-      </div>
+        <div className="empty">
+          <p>Select a submission to issue its certificate.</p>
+        </div>
+      </aside>
     );
   }
 
@@ -65,10 +66,7 @@ export default function CertificatePanel({ selected, refresh }) {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const t = e.touches ? e.touches[0] : e;
-    return {
-      x: (t.clientX - rect.left) * (canvas.width / rect.width),
-      y: (t.clientY - rect.top) * (canvas.height / rect.height),
-    };
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
   }
 
   function startStroke(e) {
@@ -95,7 +93,11 @@ export default function CertificatePanel({ selected, refresh }) {
 
   function clearPad() {
     const canvas = canvasRef.current;
-    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext("2d");
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
     inked.current = false;
     setError("");
   }
@@ -106,7 +108,7 @@ export default function CertificatePanel({ selected, refresh }) {
       return;
     }
     if (!inked.current) {
-      setError("Please draw a signature first.");
+      setError("Draw your signature first.");
       return;
     }
 
@@ -124,7 +126,7 @@ export default function CertificatePanel({ selected, refresh }) {
       const url = certificateUrl(updated?.signed_certificate_download_url);
       if (url) window.open(url, "_blank");
     } catch (err) {
-      // The backend's refusals are written for a person to read.
+      // The backend's refusals are written to be read by a person.
       setError(err.message || "Signing failed.");
     } finally {
       setSigning(false);
@@ -132,48 +134,53 @@ export default function CertificatePanel({ selected, refresh }) {
   }
 
   return (
-    <div className="panel contract">
-      <div className="panelHead">
-        <div>
-          <h3>Certificate</h3>
-          <p>Internship completion</p>
-        </div>
+    <aside className="col action">
+      <div className="colHead">
+        <p className="colTitle">Certificate</p>
       </div>
 
       {signedUrl ? (
-        <>
-          <div className="signedBox">
-            <Award size={18} />
-            <div>
-              <strong>Signed by {selected.signed_by}</strong>
-              <a href={signedUrl} target="_blank" rel="noreferrer">
-                <Download size={14} /> Download certificate
-              </a>
+        <div className="actionCard">
+          <div className="issued">
+            <div className="issuedMark">
+              <Award size={20} />
             </div>
+            <h3>Certificate issued</h3>
+            <p>Signed by {selected.signed_by}</p>
+
+            <a className="download" href={signedUrl} target="_blank" rel="noreferrer">
+              <Download size={15} /> Download certificate
+            </a>
           </div>
+
           {selected.coordinator_note && (
-            <p className="findingNote">Note: {selected.coordinator_note}</p>
+            <p className="footnote">Note: {selected.coordinator_note}</p>
           )}
-          <p className="findingNote">
-            The certificate carries the hash of the three submitted documents.
-            Rehash them to check it later.
+          <p className="footnote">
+            It carries the hash of the three submitted documents. Rehash them to
+            check it at any time.
           </p>
-        </>
+        </div>
       ) : blocked ? (
-        <div className="empty">
-          <Lock size={36} />
-          <p>Cannot be signed yet.</p>
-          <small>
-            {selected.status === "rejected"
-              ? "This submission cannot be approved automatically. Contact the student directly — signing is not available."
-              : "The student has been asked to correct and resend. Signing now would certify an incomplete record."}
-          </small>
+        <div className="actionCard">
+          <div className="locked">
+            <div className="lockedMark">
+              <Lock size={20} />
+            </div>
+            <strong>Cannot be signed yet</strong>
+            <p>
+              {selected.status === "rejected"
+                ? "This submission cannot be approved automatically. Contact the student directly — signing is not available."
+                : "The student has been asked to correct and resend. Signing now would certify an incomplete record."}
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="signArea">
-          <label className="composeField">
-            <span>Your name</span>
+        <div className="actionCard">
+          <label className="field">
+            <span className="fieldLabel">Your name</span>
             <input
+              className="input"
               type="text"
               value={coordinatorName}
               onChange={(e) => setCoordinatorName(e.target.value)}
@@ -182,12 +189,11 @@ export default function CertificatePanel({ selected, refresh }) {
           </label>
 
           {needsAcknowledgement && (
-            <div className="ackBox">
+            <div className="ackCard">
               <ShieldAlert size={16} />
               <div>
                 <strong>
-                  {warnings.length} open point
-                  {warnings.length === 1 ? "" : "s"} on this submission
+                  {warnings.length} open point{warnings.length === 1 ? "" : "s"}
                 </strong>
                 <p>
                   Signing anyway records them on the certificate. Read them in
@@ -205,9 +211,10 @@ export default function CertificatePanel({ selected, refresh }) {
             </div>
           )}
 
-          <label className="composeField">
-            <span>Note (optional)</span>
+          <label className="field">
+            <span className="fieldLabel">Note (optional)</span>
             <input
+              className="input"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -215,41 +222,45 @@ export default function CertificatePanel({ selected, refresh }) {
             />
           </label>
 
-          <p className="signLabel">
-            <PenLine size={15} /> Draw coordinator signature
-          </p>
-          <canvas
-            ref={canvasRef}
-            width={480}
-            height={200}
-            className="sigPad"
-            onMouseDown={startStroke}
-            onMouseMove={moveStroke}
-            onMouseUp={endStroke}
-            onMouseLeave={endStroke}
-            onTouchStart={startStroke}
-            onTouchMove={moveStroke}
-            onTouchEnd={endStroke}
-          />
+          <span className="fieldLabel">
+            <PenLine size={12} style={{ verticalAlign: -1, marginRight: 5 }} />
+            Signature
+          </span>
 
-          {error && <p className="signError">{error}</p>}
+          <div className="padWrap">
+            <canvas
+              ref={canvasRef}
+              className="pad"
+              onMouseDown={startStroke}
+              onMouseMove={moveStroke}
+              onMouseUp={endStroke}
+              onMouseLeave={endStroke}
+              onTouchStart={startStroke}
+              onTouchMove={moveStroke}
+              onTouchEnd={endStroke}
+            />
+            <div className="padLine" />
+            <span className="padHint">Sign above the line</span>
+          </div>
 
-          <div className="signButtons">
-            <button className="ghost" type="button" onClick={clearPad}>
+          <div className="actions">
+            <button className="btn ghost" type="button" onClick={clearPad}>
               Clear
             </button>
             <button
-              className="primary"
+              className="btn primary"
               type="button"
               onClick={handleSign}
               disabled={signing || (needsAcknowledgement && !acknowledged)}
             >
-              <CheckCircle2 size={16} />{" "}
-              {signing ? "Signing..." : "Sign certificate"}
+              <Award size={15} />
+              {signing ? "Signing…" : "Sign certificate"}
             </button>
           </div>
+
+          {error && <p className="error">{error}</p>}
         </div>
       )}
-    </div>
+    </aside>
   );
 }

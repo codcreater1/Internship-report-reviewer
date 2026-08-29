@@ -57,7 +57,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://REPLACE-WITH-YOUR-REVIEWER-URL/reports/from-n8n",
+        "url": "https://pomelo-2.codewithpeter.com/reports/from-n8n",
         "sendBody": true,
         "contentType": "multipart-form-data",
         "bodyParameters": {
@@ -89,7 +89,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-4000-8000-000000000003",
       "name": "Review (FastAPI)",
@@ -99,7 +101,13 @@
         0,
         0
       ],
-      "notes": "No text-extraction node before this one, unlike the CV workflow. The backend hashes the exact bytes it received and prints those hashes on the certificate, and it refuses scans that carry no extractable text — extracting here would throw away both. All three attachments go up under the same field name; the backend reads each document to decide which is which, so their order does not matter. neverError is set because a package held for clarification is a normal 201 outcome, and because a genuine 5xx should still reach the reply node rather than leave the student with no answer. If REVIEW_API_SECRET_KEY is set on the backend, add Authentication → Generic → Header Auth with name 'Authorization' and value 'Bearer <key>'."
+      "notes": "No text-extraction node before this one: the backend hashes the exact bytes it received onto the certificate and refuses scans with no extractable text, so extracting here would throw both away. All three attachments go up under the same field name; the backend reads each document to decide which is which, so their order does not matter. neverError is set because a package held for clarification is a normal 201 outcome, and because a genuine 5xx should still reach the reply node rather than leave the student with no answer.\n\nAuth: REVIEW_API_SECRET_KEY is set on this deployment, so the endpoint requires a bearer token. Create a Header Auth credential named 'Reviewer API key' with name 'Authorization' and value 'Bearer <the key>'.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_HEADER_AUTH_CREDENTIAL",
+          "name": "Reviewer API key"
+        }
+      }
     },
     {
       "parameters": {
@@ -173,7 +181,7 @@
         "sendTo": "REPLACE_WITH_COORDINATOR_EMAIL",
         "subject": "=Internship completion to review: {{ $json.student_name }} ({{ $json.status }})",
         "emailType": "text",
-        "message": "={{ $json.student_name }} ({{ $json.student_id }}) — {{ $json.company }}\n\nStatus         : {{ $json.status }}\nWorking days   : {{ $json.counted_working_days }}\nEmployer score : {{ $json.evaluation_score }}/100\nReport length  : {{ $json.report_word_count }} words\nSimilarity     : {{ $json.max_similarity }}\n\n{{ $json.report }}\n\nOpen points:\n{{ $json.findings.filter(f => f.severity === 'warning').map(f => '- ' + f.code + ': ' + f.message).join('\\n') || '- none' }}\n\nAdvisory reading:\n{{ $json.advisory && $json.advisory.available ? $json.advisory.summary : 'not available (the decision does not depend on it)' }}\n\nReview and sign in the dashboard:\nREPLACE_WITH_DASHBOARD_URL\n\nThis package is NOT signed. Nothing is issued to the student until a coordinator signs it.",
+        "message": "={{ $json.student_name }} ({{ $json.student_id }}) — {{ $json.company }}\n\nStatus         : {{ $json.status }}\nWorking days   : {{ $json.counted_working_days }}\nEmployer score : {{ $json.evaluation_score }}/100\nReport length  : {{ $json.report_word_count }} words\nSimilarity     : {{ $json.max_similarity }}\n\n{{ $json.report }}\n\nOpen points:\n{{ $json.findings.filter(f => f.severity === 'warning').map(f => '- ' + f.code + ': ' + f.message).join('\\n') || '- none' }}\n\nAdvisory reading:\n{{ $json.advisory && $json.advisory.available ? $json.advisory.summary : 'not available (the decision does not depend on it)' }}\n\nReview and sign in the dashboard:\nhttps://pomelo-3.codewithpeter.com\n\nThis package is NOT signed. Nothing is issued to the student until a coordinator signs it.",
         "options": {}
       },
       "id": "b1000000-0000-4000-8000-000000000006",
@@ -190,7 +198,7 @@
           "name": "Gmail account"
         }
       },
-      "notes": "The workflow stops here. Signing is a deliberate action in the dashboard against POST /reports/by-id/{id}/sign; a node that called it automatically would remove the only human from the process and leave the university issuing completion certificates on the strength of a regex over a PDF."
+      "notes": "Set Send To to the coordinator address. Left as a literal placeholder rather than an $env expression: n8n blocks environment access in expressions by default, so it would silently resolve to nothing.\n\nThe workflow stops here. Signing is a deliberate action in the dashboard against POST /reports/by-id/{id}/sign; a node that called it automatically would remove the only human from the process and leave the university issuing completion certificates on the strength of a regex over a PDF."
     }
   ],
   "pinData": {},

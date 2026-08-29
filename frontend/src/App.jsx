@@ -3,8 +3,7 @@ import "./App.css";
 
 import { getReportSubmission, getReportSubmissions } from "./services/reportsApi";
 import { countsByTab, tabFor } from "./services/completionTabs";
-import Sidebar from "./components/Sidebar";
-import Header from "./components/Header";
+import TopBar from "./components/TopBar";
 import CompletionList from "./components/CompletionList";
 import CompletionDetails from "./components/CompletionDetails";
 import CertificatePanel from "./components/CertificatePanel";
@@ -12,7 +11,18 @@ import CertificatePanel from "./components/CertificatePanel";
 // Matches the n8n Gmail poll interval — refreshing faster only adds load.
 const REFRESH_MS = 60000;
 
+const THEME_KEY = "irr.theme";
+
+function initialTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "dark" || stored === "light") return stored;
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
+
 export default function App() {
+  const [theme, setTheme] = useState(initialTheme);
   const [query, setQuery] = useState("");
   const [submissions, setSubmissions] = useState([]);
   const [tab, setTab] = useState("toSign");
@@ -20,6 +30,11 @@ export default function App() {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,8 +71,8 @@ export default function App() {
   const selectedRow =
     filtered.find((s) => s.id === selectedId) || filtered[0] || null;
 
-  // The queue rows are compact; the detail payload — findings, documents,
-  // advisory reading — is fetched only for the row actually open.
+  // Queue rows are compact; the detail payload — findings, documents, advisory
+  // reading — is fetched only for the row actually open.
   useEffect(() => {
     const id = selectedRow?.id;
     if (!id) {
@@ -85,42 +100,39 @@ export default function App() {
   }, [selectedRow?.id, selectedRow?.status]);
 
   return (
-    <div className="shell">
-      <Sidebar toSignCount={counts.toSign ?? 0} />
+    <div className="app">
+      <TopBar
+        query={query}
+        setQuery={setQuery}
+        loading={loading}
+        refresh={load}
+        theme={theme}
+        toggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        toSignCount={counts.toSign ?? 0}
+      />
 
-      <main className="main">
-        <Header
-          query={query}
-          setQuery={setQuery}
+      <div className="workspace">
+        <CompletionList
           loading={loading}
-          refresh={load}
+          submissions={filtered}
+          selectedId={selectedRow?.id ?? null}
+          setSelectedId={setSelectedId}
+          tab={tab}
+          setTab={setTab}
+          counts={counts}
         />
 
-        <section className="workspace">
-          <CompletionList
-            loading={loading}
-            submissions={filtered}
-            selectedId={selectedRow?.id ?? null}
-            setSelectedId={setSelectedId}
-            tab={tab}
-            setTab={setTab}
-            counts={counts}
-          />
+        <CompletionDetails selected={detail} loading={loadingDetail} />
 
-          <CompletionDetails selected={detail} loading={loadingDetail} />
-
-          <div className="rightCol">
-            {/* Keyed on the submission: switching rows remounts the panel,
-                so a half-drawn signature or a ticked acknowledgement can never
-                carry over to the next student. */}
-            <CertificatePanel
-              key={detail?.id ?? "none"}
-              selected={detail}
-              refresh={load}
-            />
-          </div>
-        </section>
-      </main>
+        {/* Keyed on the submission: switching rows remounts the panel, so a
+            half-drawn signature or a ticked acknowledgement can never carry
+            over to the next student. */}
+        <CertificatePanel
+          key={detail?.id ?? "none"}
+          selected={detail}
+          refresh={load}
+        />
+      </div>
     </div>
   );
 }
