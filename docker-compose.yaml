@@ -2,6 +2,9 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    # expose, not ports: the reverse proxy reaches these over the shared
+    # network. Publishing to the host instead makes Coolify fall back to
+    # stop-then-start on every deploy rather than a rolling update.
     expose:
       - "8000"
     volumes:
@@ -15,17 +18,36 @@ services:
       - REVIEW_API_SECRET_KEY=${API_SECRET_KEY:-}
       - REVIEW_STORAGE_ROOT=/data/tmp
       - REVIEW_DB_PATH=/data/submissions.db
+    networks:
+      - coolify
+      - default
 
   frontend:
     build:
       context: ./frontend
       args:
+        # Baked into the bundle at build time — Vite has no runtime config. Set
+        # this to the backend's public URL before the first build, or the
+        # dashboard ships pointing at localhost and every call fails in the
+        # browser as a CORS error that is really a wrong-host error.
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     restart: unless-stopped
     expose:
       - "80"
     depends_on:
       - backend
+    networks:
+      - coolify
+      - default
+
+networks:
+  # Coolify's proxy network. Without it the containers start, answer nothing
+  # the proxy can route to, and every URL returns the proxy's own plain-text
+  # 404 — which reads like the app is broken when it is simply unreachable.
+  coolify:
+    external: true
+  default:
+    driver: bridge
 
 volumes:
   review_data:
