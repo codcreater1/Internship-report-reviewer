@@ -52,6 +52,10 @@ All notable changes to the Internship Report Reviewer.
   parsed either way — and logs the exception type and message instead of a
   bare traceback line. Auth and network failures are not retried.
 
+### Fixed
+- Default model was `gemini-2.0-flash`, which the provider has retired. Every
+  advisory reading came back empty. Updated to the successor its own 404 names.
+
 ### Changed
 - Dashboard redesigned: top bar instead of a navigation sidebar, three working
   columns, a bronze accent taken from the certificate itself, tabular figures,

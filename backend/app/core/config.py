@@ -99,8 +99,13 @@ class Settings(BaseSettings):
         description="OpenAI-compatible API base URL (Google Gemini by default).",
     )
     llm_model: str = Field(
-        default="gemini-2.0-flash",
-        description="Model used for the advisory reading and email drafting.",
+        default="gemini-3.6-flash",
+        description=(
+            "Model used for the advisory reading and email drafting. Providers "
+            "retire model ids, and a retired one fails as a 404 that looks like a "
+            "configuration error — the log line from app.core.llm names it "
+            "explicitly, and the provider's own error usually names the successor."
+        ),
     )
     report_language: str = Field(
         default="English",
