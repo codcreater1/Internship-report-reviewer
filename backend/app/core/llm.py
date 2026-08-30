@@ -22,6 +22,24 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _create(kwargs: dict[str, Any]) -> str:
+    """One completion call, returning the message text."""
+    response = _client().chat.completions.create(**kwargs)
+    return (response.choices[0].message.content or "").strip()
+
+
+def _is_bad_request(exc: Exception) -> bool:
+    """Whether the provider rejected the request itself, rather than us.
+
+    Matched by status code and class name rather than by importing the SDK's
+    exception types, because the client is chosen at call time — it may be the
+    LangFuse-wrapped OpenAI class instead of the plain one.
+    """
+    if getattr(exc, "status_code", None) == 400:
+        return True
+    return type(exc).__name__ in {"BadRequestError", "UnprocessableEntityError"}
+
+
 def _api_key() -> str:
     return os.getenv("LLM_API_KEY", "")
 
@@ -82,11 +100,42 @@ def complete_json(
         kwargs["name"] = trace_name
 
     try:
-        response = _client().chat.completions.create(**kwargs)
-        text = (response.choices[0].message.content or "").strip()
-    except Exception:
-        logger.exception("LLM request failed; falling back to deterministic logic")
-        return None
+        text = _create(kwargs)
+    except Exception as exc:  # noqa: BLE001 — provider errors vary by SDK
+        # Not every OpenAI-compatible endpoint accepts response_format. Gemini's
+        # compatibility layer in particular rejects some shapes of it outright,
+        # and a 400 there looks identical to a real failure from the outside.
+        #
+        # Dropping it costs nothing: the system prompt already demands one JSON
+        # object and the response is parsed below either way. So retry once
+        # without it before giving up — but only for a bad-request, since
+        # retrying a bad key or a dead network just doubles the wait.
+        if _is_bad_request(exc) and "response_format" in kwargs:
+            logger.info(
+                "LLM rejected response_format (%s); retrying without it. "
+                "Set a provider that supports it to restore strict JSON mode.",
+                type(exc).__name__,
+            )
+            kwargs.pop("response_format")
+            try:
+                text = _create(kwargs)
+            except Exception as retry_exc:  # noqa: BLE001
+                logger.error(
+                    "LLM request failed after retry: %s: %s",
+                    type(retry_exc).__name__,
+                    retry_exc,
+                )
+                return None
+        else:
+            # Type and message, not a bare traceback: this line is the only
+            # thing visible to whoever is looking at container logs wondering
+            # why the advisory reading is empty.
+            logger.error(
+                "LLM request failed (%s: %s); falling back to deterministic logic",
+                type(exc).__name__,
+                exc,
+            )
+            return None
 
     try:
         return json.loads(text)

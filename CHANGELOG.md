@@ -44,6 +44,14 @@ All notable changes to the Internship Report Reviewer.
   output reaches the coordinator as questions, never as findings.
 - LangFuse tracing wired through, one trace per pass. Dormant without keys.
 
+### Fixed
+- The advisory reading came back empty against Gemini. The provider rejected
+  `response_format: json_object`, and the client swallowed that as a generic
+  failure indistinguishable from a bad key. It now retries once without the
+  parameter — the prompt already demands one JSON object and the response is
+  parsed either way — and logs the exception type and message instead of a
+  bare traceback line. Auth and network failures are not retried.
+
 ### Changed
 - Dashboard redesigned: top bar instead of a navigation sidebar, three working
   columns, a bronze accent taken from the certificate itself, tabular figures,
