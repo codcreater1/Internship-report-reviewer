@@ -118,12 +118,21 @@ def comprehend(state: ReviewState) -> dict:
         system=(
             "You are helping a university internship coordinator read a student's "
             f"end-of-internship report. Write in {settings.report_language}.\n\n"
-            "Summarise what the student says they did, in two or three sentences, "
-            "concretely — name the tools and tasks they name. Then judge whether "
-            "the work described matches the stated department.\n\n"
-            "depth_rating is 0-100 for technical specificity: concrete tools, "
-            "tasks and problems score high; generic description scores low. It is "
-            "recorded for the coordinator and affects no decision.\n\n"
+            # Each field is described separately, and told to contain only its
+            # own value. Phrased as one flowing instruction, the model prefixed
+            # the summary with a fragment of the instruction itself —
+            # "captured within two to three sentences: The student optimised…" —
+            # which a coordinator then reads.
+            "Return three fields. Each contains only its own value: no label, no "
+            "preamble, and no restatement of this instruction.\n\n"
+            "summary: two or three sentences on what the student says they did, "
+            "concrete, naming the tools and tasks they name. Start with the "
+            "substance, as in \"Rewrote the integration test suite…\".\n\n"
+            "role_alignment: whether the work described matches the stated "
+            "department, in one or two sentences.\n\n"
+            "depth_rating: an integer 0-100 for technical specificity. Concrete "
+            "tools, tasks and problems score high; generic description scores "
+            "low. It is recorded for the coordinator and affects no decision.\n\n"
             "Judge only what is in the text. Do not speculate about plagiarism and "
             "do not infer anything about the student personally.\n\n" + _SECURITY
         ),

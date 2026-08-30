@@ -56,6 +56,12 @@ All notable changes to the Internship Report Reviewer.
 - Default model was `gemini-2.0-flash`, which the provider has retired. Every
   advisory reading came back empty. Updated to the successor its own 404 names.
 
+### Fixed
+- The advisory summary came back prefixed with a fragment of its own prompt
+  ("captured within two to three sentences: The student optimised…"). The
+  comprehend step now describes each field separately and says each must
+  contain only its value.
+
 ### Changed
 - Dashboard redesigned: top bar instead of a navigation sidebar, three working
   columns, a bronze accent taken from the certificate itself, tabular figures,
