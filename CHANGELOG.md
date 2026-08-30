@@ -62,6 +62,13 @@ All notable changes to the Internship Report Reviewer.
   comprehend step now describes each field separately and says each must
   contain only its value.
 
+### Added
+- Keyboard navigation: ↑/↓ walk the queue, ignored while typing.
+- Skeleton rows while the queue loads, sized like the rows that follow.
+- Motion pass — staggered entrances, a replayed detail transition, a grain
+  layer that stops large dark panels banding, and a certificate card that
+  tilts into place and stamps its seal.
+
 ### Changed
 - Dashboard redesigned: top bar instead of a navigation sidebar, three working
   columns, a bronze accent taken from the certificate itself, tabular figures,

@@ -71,6 +71,37 @@ export default function App() {
   const selectedRow =
     filtered.find((s) => s.id === selectedId) || filtered[0] || null;
 
+  // Arrow keys walk the queue. A coordinator working thirty packages should
+  // not have to reach for the mouse between each one; this is the difference
+  // between a tool and a page. Ignored while typing, so the search box and the
+  // coordinator-name field still behave like text fields.
+  useEffect(() => {
+    function onKey(e) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) {
+        return;
+      }
+
+      const step = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+      if (step === 0 || filtered.length === 0) return;
+
+      e.preventDefault();
+      const at = filtered.findIndex((s) => s.id === selectedRow?.id);
+      // Clamped, not wrapped: falling off the end of a queue and silently
+      // landing back at the top is how you review the same case twice.
+      const next = Math.min(
+        Math.max(at === -1 ? 0 : at + step, 0),
+        filtered.length - 1,
+      );
+      setSelectedId(filtered[next].id);
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [filtered, selectedRow?.id]);
+
   // Queue rows are compact; the detail payload — findings, documents, advisory
   // reading — is fetched only for the row actually open.
   useEffect(() => {

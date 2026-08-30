@@ -91,7 +91,9 @@ export default function CompletionDetails({ selected, loading }) {
 
   return (
     <div className="col">
-      <div className="colScroll">
+      {/* Keyed on the submission so the entrance replays on every selection:
+          the panel reads as a new document rather than mutated text. */}
+      <div className="colScroll detailEnter" key={selected.id}>
         <div className="detailHead" style={{ paddingLeft: 0, paddingRight: 0 }}>
           <div className="detailTop">
             <div className="avatar lg">{initials(selected.student_name || "?")}</div>
@@ -174,8 +176,12 @@ export default function CompletionDetails({ selected, loading }) {
               {group.note && <p className="sectionNote">{group.note}</p>}
 
               <div className="findings">
-                {items.map((f) => (
-                  <article key={f.code} className={`finding ${f.severity}`}>
+                {items.map((f, i) => (
+                  <article
+                    key={f.code}
+                    className={`finding ${f.severity}`}
+                    style={{ "--i": i }}
+                  >
                     <div className="findingTop">
                       <span className="findingCode">{f.code}</span>
                       <span className={`sevChip ${f.severity}`}>

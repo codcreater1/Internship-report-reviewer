@@ -207,7 +207,15 @@ with no route to the open internet.
 There is no navigation sidebar: this service does one thing, so the width goes
 to findings text and document hashes instead. The queue is grouped by **who has
 to act next** — *To sign*, *With student*, *Signed* — rather than by raw status,
-because that is the question when you are working a queue.
+because that is the question when you are working a queue. **↑/↓ walk it**
+without reaching for the mouse.
+
+Motion is kept under 300ms and mostly carries structure: rows arrive staggered,
+the detail panel replays its entrance on each selection so it reads as a new
+document. Depth comes from light rather than perspective — the one exception is
+the certificate card, which tilts into place and stamps its seal. That is the
+ceremonial object of the whole service, and it is the only thing here allowed
+to behave like one.
 
 Opening a submission shows the figures the certificate would assert, the findings grouped by what they demand (things the student must fix separated from things the coordinator should decide), the exact wording the student was emailed, and the three PDFs with their hashes.
 

@@ -1139,3 +1139,289 @@
   color: var(--text-faint);
   max-width: 32ch;
 }
+
+/* ==========================================================================
+   Polish
+   ========================================================================== */
+
+/* ---- Queue rows --------------------------------------------------------- */
+
+/* Staggered by index rather than all at once: the eye reads a list that
+   arrives in order, and it lands in ~180ms total for a full screen. */
+.row {
+  animation: rise var(--enter) both;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+
+.row:active {
+  transform: scale(0.994);
+}
+
+.row.selected {
+  box-shadow: var(--lift);
+}
+
+/* The accent bar grows into place instead of appearing, which is what makes
+   moving down the queue feel continuous rather than like six separate jumps. */
+.row.selected::before {
+  animation: barIn 220ms var(--spring) both;
+  transform-origin: center;
+}
+
+@keyframes barIn {
+  from {
+    transform: scaleY(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Something is waiting on a person — the only animated status in the app. */
+.status.approved .dot {
+  animation: breathe 2.6s ease-in-out infinite;
+}
+
+/* ---- Skeletons ---------------------------------------------------------- */
+
+/* Shapes the size of the rows that are coming, rather than the word
+   "Loading". The list does not reflow when the data lands. */
+.skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 4px;
+  border-radius: var(--radius);
+  animation: fadeIn 200ms both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.shimmer {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    var(--hover) 40%,
+    var(--surface) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.skeleton .shimmer.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  flex-shrink: 0;
+}
+
+.skeletonLines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.skeletonLines .shimmer:first-child {
+  height: 10px;
+  width: 62%;
+}
+
+.skeletonLines .shimmer:last-child {
+  height: 9px;
+  width: 88%;
+  opacity: 0.6;
+}
+
+/* ---- Detail ------------------------------------------------------------- */
+
+/* Keyed on the submission id in JSX, so this replays on every selection and
+   the panel reads as a new document rather than mutated text. */
+.detailEnter {
+  animation: rise var(--enter) both;
+}
+
+.detailEnter > * {
+  animation: rise var(--enter) both;
+}
+
+.detailEnter > *:nth-child(2) { animation-delay: 40ms; }
+.detailEnter > *:nth-child(3) { animation-delay: 70ms; }
+.detailEnter > *:nth-child(4) { animation-delay: 95ms; }
+.detailEnter > *:nth-child(n + 5) { animation-delay: 115ms; }
+
+.stat {
+  transition: background var(--fast);
+}
+
+.stat:hover {
+  background: var(--raised);
+}
+
+.finding {
+  animation: rise 220ms var(--spring) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+.doc {
+  transition: background var(--fast), padding-left var(--fast);
+}
+
+.doc:hover {
+  padding-left: 19px;
+}
+
+/* ==========================================================================
+   The certificate card
+
+   The one place perspective earns its keep. This is the ceremonial object of
+   the whole service — the thing a coordinator signs and a registrar files —
+   and giving it a physical presence the rest of the UI does not have is the
+   point, not decoration. Everywhere else stays flat: a queue you work through
+   all day should not move under you.
+   ========================================================================== */
+
+.col.action {
+  perspective: 1200px;
+}
+
+.issued {
+  transform-style: preserve-3d;
+  animation: certIn 620ms var(--spring) both;
+  box-shadow: var(--glow-accent);
+}
+
+/* Tilts up into place, as though set down on the desk. */
+@keyframes certIn {
+  from {
+    opacity: 0;
+    transform: rotateX(14deg) translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The seal presses in: scales down from oversized and settles, which is the
+   motion of a stamp rather than a fade. */
+.issuedMark {
+  animation: seal 520ms var(--spring) both;
+  animation-delay: 180ms;
+  box-shadow: 0 0 0 0 var(--accent-quiet);
+}
+
+@keyframes seal {
+  from {
+    opacity: 0;
+    transform: scale(1.9) rotate(-14deg);
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.download {
+  animation: rise 300ms var(--spring) both;
+  animation-delay: 320ms;
+}
+
+.download:active {
+  transform: translateY(1px);
+}
+
+/* The signing surface leans very slightly toward the reader while it is being
+   used, and flattens when it is not. Four degrees — enough to feel present,
+   not enough to distort the line you are signing on. */
+.padWrap {
+  transform-style: preserve-3d;
+  transition: transform 320ms var(--spring), box-shadow 320ms var(--spring);
+  box-shadow: var(--shadow-sm);
+}
+
+.padWrap:hover,
+.padWrap:focus-within {
+  transform: rotateX(4deg) translateY(-2px);
+  box-shadow: var(--lift);
+}
+
+.btn.primary {
+  position: relative;
+  overflow: hidden;
+}
+
+/* A single sweep of light across the button on hover. Fires once per
+   entry, so it never becomes a loop competing for attention. */
+.btn.primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+}
+
+.btn.primary:hover:not(:disabled)::after {
+  animation: sweep 620ms var(--ease);
+}
+
+@keyframes sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* ---- Empty states ------------------------------------------------------- */
+
+.empty {
+  animation: rise 320ms var(--spring) both;
+}
+
+.emptyIcon {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- Keyboard ----------------------------------------------------------- */
+
+/* Shown in the queue header. A tool people work a list in should be
+   navigable without the mouse, and should say so. */
+.kbdHint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  background: var(--surface);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+}

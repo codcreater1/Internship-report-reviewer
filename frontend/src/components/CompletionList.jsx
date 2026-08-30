@@ -38,14 +38,30 @@ export default function CompletionList({
             </button>
           ))}
         </div>
+
+        {/* A list is worked with the hands on the keyboard; saying so costs
+            one line and is the difference between a tool and a page. */}
+        <p className="kbdHint">
+          <kbd>↑</kbd>
+          <kbd>↓</kbd>
+          <span>to move through the queue</span>
+        </p>
       </div>
 
       <div className="colScroll">
-        {loading && submissions.length === 0 && (
-          <div className="empty">
-            <p>Loading submissions…</p>
-          </div>
-        )}
+        {/* Shapes the size of the rows that are coming, so the list does not
+            reflow when the data lands. */}
+        {loading &&
+          submissions.length === 0 &&
+          [0, 1, 2, 3].map((i) => (
+            <div className="skeleton" key={i} style={{ "--i": i }}>
+              <div className="shimmer avatar" />
+              <div className="skeletonLines">
+                <div className="shimmer" />
+                <div className="shimmer" />
+              </div>
+            </div>
+          ))}
 
         {!loading && submissions.length === 0 && (
           <div className="empty">
@@ -57,7 +73,7 @@ export default function CompletionList({
           </div>
         )}
 
-        {submissions.map((s) => {
+        {submissions.map((s, i) => {
           // What a coordinator acts on: how many things the student must fix,
           // or how many points need a decision before signing.
           const badge = s.clarification_count || s.warning_count;
@@ -67,6 +83,7 @@ export default function CompletionList({
               key={s.id}
               type="button"
               className={s.id === selectedId ? "row selected" : "row"}
+              style={{ "--i": i }}
               onClick={() => setSelectedId(s.id)}
             >
               <div className="avatar">{initials(s.student_name || "?")}</div>
