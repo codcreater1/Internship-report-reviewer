@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)
-![Tests](https://img.shields.io/badge/tests-55%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-77%20passing-brightgreen)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -239,7 +239,7 @@ Setup: [`docs/n8n-integration.md`](docs/n8n-integration.md).
 cd backend && pytest
 ```
 
-55 tests, hermetic and offline — no network, temp database. That is possible precisely because nothing in the decision path calls an API.
+77 tests, hermetic and offline — no network, temp database. That is possible precisely because nothing in the decision path calls an API.
 
 The gate tests break one property of a valid package and assert the finding **and its severity**. Severity is the part worth asserting: a check that rejects where it should ask for a correction refuses a student for something they could have fixed, and "some finding fired" would not catch it. The API tests run real generated PDFs through the full HTTP surface — real text extraction, real certificate rendering, real signature embedding.
 
