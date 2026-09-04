@@ -14,6 +14,10 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - REVIEW_LLM_BASE_URL=${LLM_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
       - REVIEW_LLM_MODEL=${LLM_MODEL:-gemini-3.6-flash}
+      # Per-call deadline for the model. Four calls fit inside a 120s proxy
+      # window at the default; raise it only if the proxy in front of this
+      # service allows longer.
+      - REVIEW_LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-20}
       - REVIEW_CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:80"]}
       - REVIEW_API_SECRET_KEY=${API_SECRET_KEY:-}
       - REVIEW_STORAGE_ROOT=/data/tmp
