@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -96,6 +98,18 @@ def load_corpus(index: SimilarityIndex | None = None) -> int:
     return len(bodies)
 
 
+def _in_new_thread(work: Callable[[], None]) -> None:
+    """Run *work* outside the request that scheduled it.
+
+    A daemon thread rather than a queue: the work is one advisory reading, it
+    writes a single row when it is done, and losing it on shutdown costs
+    commentary the coordinator can live without. A package's status never
+    depends on it, which is the whole reason it can be moved off the response
+    at all.
+    """
+    threading.Thread(target=work, daemon=True, name="advisory-reading").start()
+
+
 class ReportService:
     """Turns three attachments into a stored, reviewed submission."""
 
@@ -103,9 +117,13 @@ class ReportService:
         self,
         verifier: ReportVerificationService | None = None,
         index: SimilarityIndex | None = None,
+        background: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
         self.verifier = verifier or report_verification_service
         self.index = index if index is not None else similarity_index
+        # Injectable so a test can run the advisory inline and assert on what
+        # it wrote, instead of sleeping and hoping.
+        self.background = background or _in_new_thread
 
     # ------------------------------------------------------------------ #
     # Entry point
@@ -163,13 +181,23 @@ class ReportService:
             **verdict,
         )
 
-        # Advisory review is skipped for packages that are already settled
+        stored = self._finish(submission, report_body=report.body_text)
+
+        # The advisory reading is skipped for packages that are already settled
         # against the student: they will be resubmitted or discussed, and
         # spending tokens commenting on a report nobody will act on is waste.
-        if status in (STATUS_APPROVED, STATUS_PENDING):
-            submission.advisory = self._advisory_review(report, submission)
+        #
+        # For the rest it runs after this function returns. Three model calls
+        # inside the request meant a package could take longer to review than
+        # the proxy in front of this service would wait, and the caller then
+        # received a gateway error instead of the verdict — which was already
+        # decided, stored, and identical either way. The reading now lands on
+        # the stored row a few seconds later, which is where the coordinator
+        # reads it from anyway.
+        if stored.status in (STATUS_APPROVED, STATUS_PENDING):
+            self._schedule_advisory(stored.id, report)
 
-        return self._finish(submission, report_body=report.body_text)
+        return stored
 
     def _finish(
         self,
@@ -402,6 +430,35 @@ class ReportService:
     # Advisory review
     # ------------------------------------------------------------------ #
 
+    def _schedule_advisory(self, submission_id: str, report: ReportFields) -> None:
+        """Read the report in the background and attach the result to its row.
+
+        The stored submission is re-read after the reading finishes rather than
+        captured here, so a signature that landed in the meantime is not
+        overwritten by a copy of the row from before it.
+        """
+
+        def work() -> None:
+            try:
+                submission = report_repository.get_by_id(submission_id)
+                if submission is None:
+                    return
+                advisory = self._advisory_review(report, submission)
+
+                submission = report_repository.get_by_id(submission_id)
+                if submission is None:
+                    return
+                submission.advisory = advisory
+                report_repository.update(submission)
+            except Exception:  # noqa: BLE001 — a thread that raises tells nobody
+                logger.exception(
+                    "Advisory reading failed for submission %s; the verdict is "
+                    "unaffected",
+                    submission_id,
+                )
+
+        self.background(work)
+
     def _advisory_review(
         self,
         report: ReportFields,
@@ -515,6 +572,9 @@ class ReportService:
                 "</ITEMS_TO_COMMUNICATE>"
             ),
             schema=_EMAIL_SCHEMA,
+            # One extra attempt, no more: the caller is holding a connection
+            # open for this, and the templates say everything the student needs.
+            retries=1,
             trace_name="report-email-generation",
         )
 

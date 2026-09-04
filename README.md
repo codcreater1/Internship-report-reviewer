@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)
-![Tests](https://img.shields.io/badge/tests-77%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-79%20passing-brightgreen)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -49,6 +49,13 @@ The middle pass earns its tokens. Deterministic checks compare *documents* — a
 With `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` set, each pass is traced separately so you can see which one spends what.
 
 That has a practical payoff: **a package is never held because an API was down.** Systems where the model produces the score do not get that for free.
+
+It is also why the reading runs *after the response has been sent*, on its own
+thread, and lands on the stored submission a few seconds later. Three model
+calls inside the request made a review as slow as the busiest minute at the
+provider — slow enough for a proxy to give up and hand the caller a gateway
+error instead of a verdict that was already decided and stored. Deferring it
+costs nothing that anyone waits on: the coordinator reads it from the row.
 
 ---
 
@@ -131,7 +138,7 @@ flowchart TD
     E -->|fixable| R1
     E -->|open points| F[pending]
     E -->|clean| G[approved]
-    F --> H[advisory reading<br/>questions for the coordinator]
+    F --> H[advisory reading<br/>after the reply, on its own thread]
     G --> H
     H --> I{{human coordinator<br/>REQUIRED}}
     I -->|signs| J[certificate + package hash<br/>tokenised download link]
@@ -239,7 +246,7 @@ Setup: [`docs/n8n-integration.md`](docs/n8n-integration.md).
 cd backend && pytest
 ```
 
-77 tests, hermetic and offline — no network, temp database. That is possible precisely because nothing in the decision path calls an API.
+79 tests, hermetic and offline — no network, temp database. That is possible precisely because nothing in the decision path calls an API.
 
 The gate tests break one property of a valid package and assert the finding **and its severity**. Severity is the part worth asserting: a check that rejects where it should ask for a correction refuses a student for something they could have fixed, and "some finding fired" would not catch it. The API tests run real generated PDFs through the full HTTP surface — real text extraction, real certificate rendering, real signature embedding.
 

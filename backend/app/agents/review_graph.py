@@ -107,6 +107,12 @@ def _fact_sheet(state: ReviewState) -> str:
     )
 
 
+# This graph runs after the response has gone back to the caller, so a busy
+# provider is worth waiting out rather than falling back on. Nothing is blocked
+# by these calls: the status was decided before any of them ran.
+_OVERLOAD_RETRIES = 2
+
+
 def _fenced(state: ReviewState) -> str:
     note = "(truncated for length)\n" if state.get("truncated") else ""
     return f"<STUDENT_REPORT>\n{note}{state.get('body', '')}\n</STUDENT_REPORT>"
@@ -138,6 +144,7 @@ def comprehend(state: ReviewState) -> dict:
         ),
         user=f"{_fact_sheet(state)}\n{_fenced(state)}",
         schema=_COMPREHEND_SCHEMA,
+        retries=_OVERLOAD_RETRIES,
         trace_name="advisory-comprehend",
     )
 
@@ -185,6 +192,7 @@ def audit(state: ReviewState) -> dict:
         ),
         user=f"{_fact_sheet(state)}\n{_fenced(state)}",
         schema=_AUDIT_SCHEMA,
+        retries=_OVERLOAD_RETRIES,
         trace_name="advisory-audit",
     )
 
@@ -227,6 +235,7 @@ def question(state: ReviewState) -> dict:
             + f"\n\n{_fenced(state)}"
         ),
         schema=_QUESTION_SCHEMA,
+        retries=_OVERLOAD_RETRIES,
         trace_name="advisory-questions",
     )
 

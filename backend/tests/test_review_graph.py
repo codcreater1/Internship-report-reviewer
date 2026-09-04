@@ -219,6 +219,7 @@ def test_nothing_the_model_says_changes_the_status(monkeypatch, verdict, package
     """
     from app.main import app
     from app.routers.reports import get_report_service
+    from app.services import report_repository
     from app.services.report_service import ReportService
     from app.services.report_similarity import SimilarityIndex
     from app.services.report_verification import ReportVerificationService
@@ -233,7 +234,11 @@ def test_nothing_the_model_says_changes_the_status(monkeypatch, verdict, package
 
     index = SimilarityIndex()
     service = ReportService(
-        verifier=ReportVerificationService(index=index), index=index
+        verifier=ReportVerificationService(index=index),
+        index=index,
+        # Inline, so the reading has certainly happened by the time the
+        # assertions run. In the deployment it happens on its own thread.
+        background=lambda work: work(),
     )
     app.dependency_overrides[get_report_service] = lambda: service
     try:
@@ -245,4 +250,109 @@ def test_nothing_the_model_says_changes_the_status(monkeypatch, verdict, package
 
     assert body["status"] == STATUS_APPROVED
     assert body["findings"] == []
-    assert body["advisory"]["available"] is True
+
+    # The reading arrives after the response, on the stored row. What it says
+    # is irrelevant; that it cannot move the status is the point.
+    stored = report_repository.get_by_id(body["id"])
+    assert stored is not None
+    assert stored.advisory is not None
+    assert stored.advisory.available is True
+    assert stored.status == STATUS_APPROVED
+    assert stored.findings == []
+
+
+def test_the_reading_arrives_after_the_answer(monkeypatch, packages):
+    """The response carries a verdict; the reading catches up with the row.
+
+    Three model calls used to happen before the caller heard anything, which
+    made a package's review as slow as the busiest minute at the provider —
+    slow enough that a proxy could give up and hand n8n an error page instead
+    of a decision that had already been made.
+    """
+    from app.main import app
+    from app.routers.reports import get_report_service
+    from app.services import report_repository
+    from app.services.report_service import ReportService
+    from app.services.report_similarity import SimilarityIndex
+    from app.services.report_verification import ReportVerificationService
+
+    def fake(*, trace_name, **kw):
+        if trace_name == "advisory-comprehend":
+            return {"summary": "Cache work.", "role_alignment": "Backend.", "depth_rating": 4}
+        return {"inconsistencies": [], "questions": ["What did the cache replace?"]}
+
+    monkeypatch.setattr(llm, "is_enabled", lambda: True)
+    monkeypatch.setattr(llm, "complete_json", fake)
+
+    deferred = []
+    index = SimilarityIndex()
+    service = ReportService(
+        verifier=ReportVerificationService(index=index),
+        index=index,
+        background=deferred.append,
+    )
+    app.dependency_overrides[get_report_service] = lambda: service
+    try:
+        from tests.test_reports import submit
+
+        body = submit(packages["clean"]).json()
+    finally:
+        app.dependency_overrides.clear()
+
+    assert body["status"] == STATUS_APPROVED
+    assert body["advisory"] is None
+    assert report_repository.get_by_id(body["id"]).advisory is None
+
+    assert len(deferred) == 1
+    deferred[0]()
+
+    stored = report_repository.get_by_id(body["id"])
+    assert stored.advisory.available is True
+    assert stored.advisory.questions_for_coordinator == ["What did the cache replace?"]
+    assert stored.status == STATUS_APPROVED
+
+
+def test_a_reading_that_raises_leaves_the_row_alone(monkeypatch, packages):
+    """Nobody is waiting on this thread, so its failure has to be silent-but-logged.
+
+    An exception escaping here would be raised into nothing: the response went
+    out long ago. What must not happen is a half-written row.
+    """
+    from app.main import app
+    from app.routers.reports import get_report_service
+    from app.services import report_repository
+    from app.services.report_service import ReportService
+    from app.services.report_similarity import SimilarityIndex
+    from app.services.report_verification import ReportVerificationService
+
+    def explode(*, trace_name, **kw):
+        # Only the reading fails. The student's email is drafted inside the
+        # request and has its own fallback; this test is about the thread.
+        if trace_name.startswith("advisory-"):
+            raise RuntimeError("provider on fire")
+        return {"subject": "Internship Documents", "body": "Received."}
+
+    monkeypatch.setattr(llm, "is_enabled", lambda: True)
+    monkeypatch.setattr(llm, "complete_json", explode)
+
+    deferred = []
+    index = SimilarityIndex()
+    service = ReportService(
+        verifier=ReportVerificationService(index=index),
+        index=index,
+        background=deferred.append,
+    )
+    app.dependency_overrides[get_report_service] = lambda: service
+    try:
+        from tests.test_reports import submit
+
+        body = submit(packages["clean"]).json()
+    finally:
+        app.dependency_overrides.clear()
+
+    deferred[0]()  # must not raise
+
+    stored = report_repository.get_by_id(body["id"])
+    assert stored.status == STATUS_APPROVED
+    assert stored.findings == []
+    assert stored.email_body

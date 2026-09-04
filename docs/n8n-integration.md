@@ -108,8 +108,9 @@ error page cannot act on it.
 
 If that branch fires, the fault is upstream — the service was too slow or
 unreachable, not the package. `REVIEW_LLM_TIMEOUT_SECONDS` bounds the slow
-case: four model calls at that deadline each is the review's worst case, and it
-has to stay inside the proxy's read timeout.
+case: one model call happens inside the request, with at most one repeat when
+the provider is busy, so twice that deadline is the worst a review can take.
+The advisory reading is not in that budget — it runs after the reply.
 
 ## Why it stops before signing
 

@@ -6,6 +6,18 @@ All notable changes to the Internship Report Reviewer.
 
 ## [Unreleased]
 
+### Changed
+- The advisory reading now runs after the response has been sent, on its own
+  thread, and is attached to the stored submission when it finishes. Three
+  model calls inside the request made a review as slow as the busiest minute
+  at the provider; a package could take longer than the proxy would wait, and
+  n8n received a gateway error page in place of a verdict that had already
+  been decided and stored. A request now carries at most one model call.
+- The model client retries a provider that says it is overloaded (429/503),
+  which Gemini answers with under load. The student's email gets one extra
+  attempt because someone is holding the connection open for it; the advisory
+  passes get two, because nobody is.
+
 ### Fixed
 - One review froze the whole service. The intake routes were `async def` but
   called the pipeline synchronously, so PDF parsing and up to four model calls
