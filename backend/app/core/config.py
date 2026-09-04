@@ -111,6 +111,18 @@ class Settings(BaseSettings):
         default="English",
         description="Language the model writes student emails and readings in.",
     )
+    llm_timeout_seconds: float = Field(
+        default=20.0,
+        gt=0,
+        description=(
+            "Per-call deadline for the model. One package costs four calls - three "
+            "advisory passes and the student's email - so four times this is the "
+            "review's worst case, and it has to stay under whatever read timeout "
+            "the proxy in front of this service enforces. The SDK's own default is "
+            "ten minutes, which turns a single hanging call into a gateway timeout "
+            "and hands the caller an error page instead of a verdict."
+        ),
+    )
 
     # ------------------------------------------------------------------ #
     # Security

@@ -122,7 +122,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        260,
+        400,
         -120
       ],
       "credentials": {
@@ -171,7 +171,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        260,
+        400,
         120
       ],
       "notes": "Only 'approved' and 'pending' need a person. A package held for clarification or rejected is already back with the student."
@@ -189,7 +189,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        520,
+        660,
         120
       ],
       "credentials": {
@@ -199,6 +199,42 @@
         }
       },
       "notes": "Set Send To to the coordinator address. Left as a literal placeholder rather than an $env expression: n8n blocks environment access in expressions by default, so it would silently resolve to nothing.\n\nThe workflow stops here. Signing is a deliberate action in the dashboard against POST /reports/by-id/{id}/sign; a node that called it automatically would remove the only human from the process and leave the university issuing completion certificates on the strength of a regex over a PDF."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b3000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b1000000-0000-4000-8000-000000000007",
+      "name": "Did the review answer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        140,
+        0
+      ],
+      "notes": "Guards the reply against something that is not a verdict. neverError is set on the Review node so a held package - a normal 201 - reaches the student, but that also lets a proxy's error page through as if it were an answer: a gateway timeout arrives as JSON with no 'status' field, and the Gmail node then fails on an address that resolved to nothing. Every real response carries a status, so that is what is checked. The false branch stops: a student who is told nothing can resend, while a student emailed an error page cannot act on it."
     }
   ],
   "pinData": {},
@@ -229,12 +265,7 @@
       "main": [
         [
           {
-            "node": "Reply to Student",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Waiting on a coordinator?",
+            "node": "Did the review answer?",
             "type": "main",
             "index": 0
           }
@@ -246,6 +277,23 @@
         [
           {
             "node": "Notify Coordinator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Did the review answer?": {
+      "main": [
+        [
+          {
+            "node": "Reply to Student",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Waiting on a coordinator?",
             "type": "main",
             "index": 0
           }

@@ -14,6 +14,9 @@ Get a message            ← downloads all three attachments
         ▼
 Review (FastAPI)         ← POST /reports/from-n8n  (multipart, 3 × files)
         │
+        ▼
+Did the review answer?   ← a response with no 'status' is not a verdict
+        │
         ├──────────────────────────────┐
         ▼                              ▼
 Reply to Student          Waiting on a coordinator?   ← status approved/pending
@@ -87,12 +90,26 @@ request can drift out of sync with the reason for it. The text is generated from
 the same `remedy` fields the checks produce, so it cannot say something the
 checks did not find.
 
-## Why `neverError` is set
+## Why `neverError` is set, and what guards it
 
 A held or rejected package returns **HTTP 201 with the status in the body** — a
 normal outcome, not a protocol error. `neverError` is set anyway so a genuine
-4xx or 5xx also reaches the reply node instead of failing the execution
-silently and leaving the student with no answer.
+4xx or 5xx also reaches the workflow instead of failing the execution silently
+and leaving the student with no answer.
+
+That setting has a cost, and **Did the review answer?** pays it. With
+`neverError`, a reverse proxy's error page arrives looking like a result: a
+Cloudflare 524 is JSON with `status: 524` and no `intern_email`, so the Gmail
+node is handed an address that resolved to nothing and fails with
+`Cannot read properties of undefined (reading 'split')`. Every real response
+carries the review `status`, so the gate tests for it and the false branch
+stops. A student who hears nothing can resend; a student emailed a gateway
+error page cannot act on it.
+
+If that branch fires, the fault is upstream — the service was too slow or
+unreachable, not the package. `REVIEW_LLM_TIMEOUT_SECONDS` bounds the slow
+case: four model calls at that deadline each is the review's worst case, and it
+has to stay inside the proxy's read timeout.
 
 ## Why it stops before signing
 
@@ -111,6 +128,6 @@ The one thing worth watching is the multipart body: n8n must send **three
 separate parts all named `files`**. That is what the workflow is configured to
 do and the endpoint has been verified against exactly that shape over the wire.
 If the backend answers with an `ATTACHMENT_COUNT` finding saying it received one
-file instead of three, open the Review node's output and confirm all three
-`formBinaryData` rows are present and that `binaryMode` is `separate` in the
-workflow settings.
+file instead of three, open **Get a message**'s output and look at its binary
+panel: three entries named `attachment_0`, `attachment_1`, `attachment_2`. One
+entry there means the mail carried one PDF, not that the workflow dropped two.

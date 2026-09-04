@@ -60,7 +60,19 @@ def _client():
     else:
         from openai import OpenAI
 
-    return OpenAI(api_key=_api_key(), base_url=settings.llm_base_url)
+    # No retries, and a deadline the proxy in front of this service can outlive.
+    # The SDK defaults to ten minutes and two retries, so one unresponsive call
+    # could hold a request open for half an hour; a package would then reach the
+    # caller as a gateway timeout rather than as the verdict it already has,
+    # because the deterministic checks finished long before the model was asked
+    # anything. Failing fast costs an advisory reading. Failing slow costs the
+    # answer.
+    return OpenAI(
+        api_key=_api_key(),
+        base_url=settings.llm_base_url,
+        timeout=settings.llm_timeout_seconds,
+        max_retries=0,
+    )
 
 
 def complete_json(

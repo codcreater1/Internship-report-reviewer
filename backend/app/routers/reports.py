@@ -28,6 +28,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from pydantic import EmailStr
 
@@ -98,6 +99,13 @@ async def _read_attachments(files: list[UploadFile]) -> list[Attachment]:
 
 # --------------------------------------------------------------------------- #
 # Intake
+#
+# Both intake routes hand the review to a worker thread. It is CPU work with
+# blocking network calls inside it - PDF parsing, then up to four model calls -
+# and awaiting nothing, so running it on the event loop stops the whole process
+# for as long as one package takes: /health included, which is what a monitor
+# reads to decide whether this service is alive. A slow review must be slow for
+# one caller, not for every caller.
 # --------------------------------------------------------------------------- #
 
 
@@ -118,7 +126,8 @@ async def submit_report_package(
     placement elsewhere can pass its own key and later fetch every attempt made
     against it. This service never resolves it.
     """
-    return service.review(
+    return await run_in_threadpool(
+        service.review,
         await _read_attachments(files),
         intern_email=str(intern_email),
         application_id=application_id,
@@ -138,7 +147,8 @@ async def submit_report_package_from_n8n(
     service: ReportService = Depends(get_report_service),
 ) -> ReportSubmissionResponse:
     """Same as POST /reports/, behind the shared n8n bearer token."""
-    return service.review(
+    return await run_in_threadpool(
+        service.review,
         await _read_attachments(files),
         intern_email=str(intern_email),
         application_id=application_id,

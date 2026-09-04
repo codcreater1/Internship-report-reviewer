@@ -6,6 +6,25 @@ All notable changes to the Internship Report Reviewer.
 
 ## [Unreleased]
 
+### Fixed
+- One review froze the whole service. The intake routes were `async def` but
+  called the pipeline synchronously, so PDF parsing and up to four model calls
+  ran on the event loop; `/health` stopped answering for the duration, and a
+  package that took longer than the proxy's read timeout came back to n8n as a
+  Cloudflare 524. Both routes now hand the review to a worker thread.
+- The model client was built with the SDK's defaults — a ten-minute timeout and
+  two retries — so a single unresponsive call could hold a request open far
+  past any gateway's patience. It now carries `REVIEW_LLM_TIMEOUT_SECONDS`
+  (20s) and no retries: the advisory is optional by design, and a package must
+  never wait on it.
+
+### Added
+- `Did the review answer?` in the n8n workflow. `neverError` lets a proxy's
+  error page through as if it were a result — a 524 is JSON with no
+  `intern_email`, and the Gmail node then fails on an address that resolved to
+  nothing. Every real response carries a `status`; the gate tests for it and
+  stops when it is absent.
+
 ### Added — initial release
 - `POST /reports/` reviews an end-of-internship package: three PDFs and the
   address they arrived from. Attachments are classified by reading them, so
