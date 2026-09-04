@@ -572,9 +572,13 @@ class ReportService:
                 "</ITEMS_TO_COMMUNICATE>"
             ),
             schema=_EMAIL_SCHEMA,
-            # One extra attempt, no more: the caller is holding a connection
-            # open for this, and the templates say everything the student needs.
-            retries=1,
+            # No second attempt. Measured against the deployment, this
+            # provider's failures are mostly slow ones - a call that hangs
+            # until the deadline rather than a 503 that comes back in half a
+            # second - so a retry rarely buys a draft and reliably pushes the
+            # request towards the proxy's 30s patience. The advisory passes
+            # still retry, because nothing is waiting on them.
+            retries=0,
             trace_name="report-email-generation",
         )
 

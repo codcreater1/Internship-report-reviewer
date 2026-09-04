@@ -14,9 +14,12 @@ All notable changes to the Internship Report Reviewer.
   n8n received a gateway error page in place of a verdict that had already
   been decided and stored. A request now carries at most one model call.
 - The model client retries a provider that says it is overloaded (429/503),
-  which Gemini answers with under load. The student's email gets one extra
-  attempt because someone is holding the connection open for it; the advisory
-  passes get two, because nobody is.
+  which Gemini answers with under load. Only the advisory passes use it: they
+  run after the response, so waiting out a busy minute costs nobody anything.
+  The student's email is drafted on a single attempt - measured against the
+  deployment, this provider's failures are mostly calls that hang until the
+  deadline rather than fast 503s, so a second attempt rarely produced a draft
+  and reliably pushed the request towards the proxy's 30s patience.
 
 ### Fixed
 - One review froze the whole service. The intake routes were `async def` but

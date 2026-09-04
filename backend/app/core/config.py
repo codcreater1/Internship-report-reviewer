@@ -115,14 +115,14 @@ class Settings(BaseSettings):
         default=20.0,
         gt=0,
         description=(
-            "Per-call deadline for the model. Only one call happens inside a "
-            "request - the student's email, which may make one extra attempt if "
-            "the provider is busy - so twice this is what a caller can wait, and "
-            "it has to stay under the read timeout of whatever proxy sits in "
-            "front of this service. The three advisory passes run after the "
-            "response and are bounded by nothing but this. The SDK's own default "
-            "is ten minutes, which turns a single hanging call into a gateway "
-            "timeout and hands the caller an error page instead of a verdict."
+            "Per-call deadline for the model. Exactly one call happens inside a "
+            "request - the student's email, tried once - so this plus the time "
+            "spent reading three PDFs is the worst a caller waits, and it has to "
+            "stay under the read timeout of whatever proxy sits in front of this "
+            "service. The three advisory passes run after the response, where "
+            "they may also retry a busy provider. The SDK's own default is ten "
+            "minutes, which turns a single hanging call into a gateway timeout "
+            "and hands the caller an error page instead of a verdict."
         ),
     )
 
