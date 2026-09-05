@@ -153,7 +153,7 @@ export default function CertificatePanel({ selected, onSigned }) {
       // await is not a user gesture any more, so browsers block it silently:
       // the coordinator saw nothing happen and had no download either. The
       // panel now settles into its issued state with the link in it.
-      await onSigned(selected.id);
+      await onSigned(selected.id, selected.student_name);
     } catch (err) {
       // The backend's refusals are written to be read by a person.
       setError(err.message || "Signing failed.");

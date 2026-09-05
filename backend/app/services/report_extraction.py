@@ -194,15 +194,25 @@ def parse_date(value: str | None) -> date | None:
     return None
 
 
+# Horizontal whitespace only. `\s` matches newlines, and a label whose own
+# line is blank would then reach across the break and adopt the line below it:
+# an evaluation form with "Supervisor Name:" left empty came back with the
+# supervisor named as "Supervisor Title: Head of Section", which reads as a
+# filled-in field and silences the check for a missing one. A blank field has
+# to stay blank.
+_SPACE = r"[^\S\n]*"
+
+
 def find_label(text: str, *labels: str) -> str | None:
     """Return the value of the first ``Label: value`` line matching *labels*.
 
     Matching is case-insensitive and tolerant of the spacing and punctuation
-    variations that survive a round-trip through PDF text extraction.
+    variations that survive a round-trip through PDF text extraction — but not
+    of a line break: the value must be on the label's own line.
     """
     for label in labels:
         pattern = re.compile(
-            rf"^\s*{re.escape(label)}\s*[:\-]\s*(.+?)\s*$",
+            rf"^{_SPACE}{re.escape(label)}{_SPACE}[:\-]{_SPACE}(.+?){_SPACE}$",
             re.IGNORECASE | re.MULTILINE,
         )
         match = pattern.search(text)
@@ -213,18 +223,31 @@ def find_label(text: str, *labels: str) -> str | None:
     return None
 
 
+# The number a field states is the one it opens with. Anything else in the
+# value is context - "84 / 100", "84 out of 100", "(84/100)" - and reading the
+# first digits found anywhere would take the denominator when the numerator is
+# missing: a form reading "Overall Score: None / 100" came back as a perfect
+# score of 100 and the package was approved on it. A score nobody wrote must
+# read as no score at all, which is a finding the student can act on.
+#
+# Only a bracket or a quote may precede the digits; a slash or a dash may not,
+# because those are exactly what an empty numerator leaves behind.
+_LEADING_INT = re.compile(r"^[\s(\[\"']*(\d+)")
+_LEADING_DECIMAL = re.compile(r"^[\s(\[\"']*(\d+(?:[.,]\d+)?)")
+
+
 def _parse_int(value: str | None) -> int | None:
     if not value:
         return None
-    match = re.search(r"\d+", value)
-    return int(match.group(0)) if match else None
+    match = _LEADING_INT.match(value)
+    return int(match.group(1)) if match else None
 
 
 def _parse_float(value: str | None) -> float | None:
     if not value:
         return None
-    match = re.search(r"\d+(?:[.,]\d+)?", value)
-    return float(match.group(0).replace(",", ".")) if match else None
+    match = _LEADING_DECIMAL.match(value)
+    return float(match.group(1).replace(",", ".")) if match else None
 
 
 def _parse_bool(value: str | None) -> bool:

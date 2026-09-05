@@ -688,3 +688,75 @@ def test_submitted_documents_can_be_read_back(packages):
 
 def test_an_unknown_submission_is_a_404():
     assert client.get("/reports/by-id/does-not-exist").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Extraction: what a blank field means, and which number a field states
+#
+# Both of these were found by running fifty generated packages through the
+# service and reading the verdicts. Neither produced an error; both produced a
+# confident answer that was wrong, which is the only kind of bug this service
+# cannot tolerate.
+# ---------------------------------------------------------------------------
+
+
+def test_a_blank_field_does_not_swallow_the_line_below_it():
+    """An empty label must read as missing, not as the next line's value.
+
+    The evaluation form leaves "Supervisor Name:" blank when nobody filled it
+    in. Reaching across the line break returned "Supervisor Title: Head of
+    Section" as the supervisor's name — which looks filled in, so the check
+    for a missing supervisor never fired and the package went through.
+    """
+    from app.services.report_extraction import find_label
+
+    text = "Supervisor Name: \nSupervisor Title: Head of Section\nSigned: Yes\n"
+
+    assert find_label(text, "Supervisor Name", "Supervisor") is None
+    assert find_label(text, "Supervisor Title", "Title") == "Head of Section"
+
+
+def test_a_missing_score_is_missing_rather_than_perfect():
+    """"Overall Score: None / 100" is not a score of 100.
+
+    Reading the first digits anywhere in the value took the denominator, so a
+    form with no score at all was read as full marks and approved on it. The
+    numerator is the claim; without one there is no score, which is a finding
+    the student can act on.
+    """
+    from app.services.report_extraction import parse_evaluation
+
+    blank = parse_evaluation(
+        "Student Name: Zofia Wisniewska\nOverall Score: None / 100\nSigned: Yes\n"
+    )
+    assert blank.overall_score is None
+
+    empty_numerator = parse_evaluation("Overall Score:  / 100\nSigned: Yes\n")
+    assert empty_numerator.overall_score is None
+
+    # The ordinary forms still read, including the ones wrapped in brackets or
+    # spelled out, because refusing those would hold packages that are fine.
+    assert parse_evaluation("Overall Score: 84 / 100\n").overall_score == 84
+    assert parse_evaluation("Overall Score: (84/100)\n").overall_score == 84
+    assert parse_evaluation("Overall Score: 84 out of 100\n").overall_score == 84
+
+
+def test_a_form_with_no_score_asks_rather_than_approves(packages, tmp_path):
+    """The end-to-end shape of the same bug: no score must not mean approved."""
+    from app.services import report_extraction as extraction
+
+    original = extraction.parse_evaluation
+
+    def blank_score(text: str):
+        fields = original(text)
+        return fields.model_copy(update={"overall_score": None, "scores": {}})
+
+    monkey = pytest.MonkeyPatch()
+    monkey.setattr(extraction, "parse_evaluation", blank_score)
+    try:
+        body = submit(packages["clean"]).json()
+    finally:
+        monkey.undo()
+
+    assert body["status"] == STATUS_CLARIFICATION
+    assert "EVAL_SCORE_MISSING" in {f["code"] for f in body["findings"]}

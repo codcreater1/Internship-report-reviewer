@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Award } from "lucide-react";
 import "./App.css";
 
 import { getReportSubmission, getReportSubmissions } from "./services/reportsApi";
@@ -42,6 +43,7 @@ export default function App() {
   const [loadError, setLoadError] = useState("");
   const [lastLoadedAt, setLastLoadedAt] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [flash, setFlash] = useState("");
 
   const searchRef = useRef(null);
 
@@ -194,13 +196,24 @@ export default function App() {
   // behaviour dropped them onto an unrelated student with no confirmation
   // that anything had happened at all.
   const onSigned = useCallback(
-    async (signedId) => {
+    async (signedId, studentName) => {
       setSelectedId(signedId);
       setTab("signed");
+      // Said out loud as well as shown. The panel changing shape is easy to
+      // miss when your eyes were on the button you just pressed.
+      setFlash(`Certificate issued for ${studentName || "this submission"}.`);
       await load();
     },
     [load],
   );
+
+  // One line, four seconds. Long enough to read, short enough that it is gone
+  // before the next package is open.
+  useEffect(() => {
+    if (!flash) return;
+    const timer = setTimeout(() => setFlash(""), 4000);
+    return () => clearTimeout(timer);
+  }, [flash]);
 
   return (
     <div className="app">
@@ -246,6 +259,13 @@ export default function App() {
       </div>
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
+
+      {flash && (
+        <div className="flash" role="status">
+          <Award size={15} />
+          {flash}
+        </div>
+      )}
     </div>
   );
 }

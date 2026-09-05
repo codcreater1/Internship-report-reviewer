@@ -132,7 +132,7 @@ export default function CompletionList({
             <button
               key={s.id}
               type="button"
-              className={s.id === selectedId ? "row selected" : "row"}
+              className={`row ${s.status}${s.id === selectedId ? " selected" : ""}`}
               style={{ "--i": i }}
               onClick={() => setSelectedId(s.id)}
               aria-label={`${s.student_name || "Unnamed student"}, ${reportStatusLabel(

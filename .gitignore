@@ -27,3 +27,7 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# Conformance run output
+testdocs/conformance/pkgs/
+testdocs/conformance/results.json

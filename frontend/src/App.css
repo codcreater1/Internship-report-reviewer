@@ -318,17 +318,32 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* The accent bar marks the open case without shouting; it is the only place
-   the brand colour appears in the list. */
-.row.selected::before {
-  content: "";
+/* A hairline down the left edge, coloured by what the row needs. Each tab
+   holds two statuses - approved sits beside pending, a clarification beside a
+   rejection - and telling them apart used to mean reading the label on the
+   right of every row. The open case takes the accent over the top of it. */
+.row::before {
+  content: ;
   position: absolute;
   left: 0;
   top: 14px;
   bottom: 14px;
   width: 2px;
   border-radius: 99px;
+  background: var(--edge, transparent);
+  opacity: 0.55;
+  transition: background var(--fast), opacity var(--fast);
+}
+
+.row.approved { --edge: var(--ok); }
+.row.pending { --edge: var(--warn); }
+.row.request_clarification { --edge: var(--warn); }
+.row.rejected { --edge: var(--danger); }
+.row.signed { --edge: var(--accent); }
+
+.row.selected::before {
   background: var(--accent);
+  opacity: 1;
 }
 
 .avatar {
@@ -1904,6 +1919,43 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .sheetBackdrop,
   .sheet {
+    animation: none;
+  }
+}
+
+/* The line that says the certificate went out. Bottom right, out of the way of
+   the panel that just changed shape, and gone in four seconds. */
+.flash {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(360px, calc(100vw - 40px));
+  padding: 11px 15px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent-line);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  color: var(--text);
+  animation: flashIn 220ms var(--ease) both;
+}
+
+.flash svg {
+  flex: none;
+  color: var(--accent);
+}
+
+@keyframes flashIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
     animation: none;
   }
 }

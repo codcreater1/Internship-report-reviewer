@@ -6,6 +6,27 @@ All notable changes to the Internship Report Reviewer.
 
 ## [Unreleased]
 
+### Fixed — extraction
+
+- A blank field adopted the value of the line below it. The label pattern used
+  `\s*` around the value, which matches newlines, so an evaluation form with
+  "Supervisor Name:" left empty came back with the supervisor named as
+  "Supervisor Title: Head of Section" — a field that looks filled in, which
+  silenced the check for a missing one and let the package through. The value
+  now has to be on the label's own line.
+- "Overall Score: None / 100" was read as a score of 100. The number was taken
+  from anywhere in the value, so an empty numerator handed back the
+  denominator: a form nobody had scored was approved on full marks. The number
+  a field states is now the one it opens with, and a score nobody wrote reads
+  as no score — a finding the student can act on.
+
+### Added
+
+- `testdocs/conformance`: fifty generated packages posted through the running
+  service, each asserting the verdict and the finding its broken rule should
+  produce. Both extraction bugs above came from its first run; both now have
+  unit tests as well.
+
 ### Fixed — dashboard
 - The layout broke below roughly 780px: the top bar laid brand, search and
   actions out in one unwrapping row, so a phone got a page that scrolled
