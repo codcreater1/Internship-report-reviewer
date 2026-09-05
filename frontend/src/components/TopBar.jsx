@@ -1,4 +1,4 @@
-import { GraduationCap, Moon, RefreshCw, Search, Sun, WifiOff } from "lucide-react";
+import { GraduationCap, Moon, Plus, RefreshCw, Search, Sun, WifiOff } from "lucide-react";
 
 import { relativeTime } from "../services/time";
 
@@ -18,6 +18,7 @@ export default function TopBar({
   toSignCount,
   lastLoadedAt,
   error,
+  openUpload,
 }) {
   return (
     <header className="topbar">
@@ -67,6 +68,14 @@ export default function TopBar({
             updated {relativeTime(lastLoadedAt)}
           </span>
         )}
+
+        {/* The email route is how packages usually arrive; it is not the only
+            way one can. Three PDFs handed over on a memory stick used to mean
+            emailing them to yourself and waiting for the next poll. */}
+        <button className="btn small primary" type="button" onClick={openUpload}>
+          <Plus size={15} />
+          Submit
+        </button>
 
         <button
           className="iconButton"

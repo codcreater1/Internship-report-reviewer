@@ -65,3 +65,31 @@ export function reportAttachmentUrl(submissionId, role) {
 export function certificateUrl(path) {
   return path ? `${API_URL}${path}` : null;
 }
+
+// Submitting from the dashboard rather than by email.
+//
+// The endpoint is the same one n8n posts to, minus the bearer token: a
+// coordinator standing at their own desk with three PDFs a student handed over
+// on a memory stick should not have to email them to themselves first. Wrong
+// counts and unreadable files come back as findings rather than as HTTP
+// errors, which is why nothing is validated here beyond having something to
+// send.
+export async function submitReportPackage({ internEmail, files }) {
+  const form = new FormData();
+  form.append("intern_email", internEmail);
+  for (const file of files) form.append("files", file);
+
+  const res = await fetch(`${API_URL}/reports/`, { method: "POST", body: form });
+
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const message =
+      typeof detail?.detail === "string"
+        ? detail.detail
+        : Array.isArray(detail?.detail)
+          ? detail.detail.map((d) => d.msg).join("; ")
+          : "The service could not accept this submission.";
+    throw new Error(message);
+  }
+  return res.json();
+}

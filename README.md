@@ -237,6 +237,8 @@ Opening a submission shows the figures the certificate would assert, the finding
 
 When the service cannot be reached the queue says so and offers a retry. An empty queue and an unreachable one look nothing alike, which matters to somebody whose job is to work through whatever is in it.
 
+A package can also be submitted from the dashboard itself — **Submit** in the top bar takes the student address and the three PDFs, runs the same review the workflow runs, and shows the verdict where you are standing. The email route is how packages usually arrive; it is not the only way one can. A coordinator handed three files on a memory stick, a student whose mail bounced, a check somebody wants to run before telling a student to resend — all of that used to mean emailing the documents to yourself and waiting for the next poll.
+
 The signature panel does not appear at all for a package that is rejected or still waiting on the student, and one carrying open points needs the box ticked before the button enables — the same refusals the API makes, made visible instead of arriving as an error after the fact.
 
 ---

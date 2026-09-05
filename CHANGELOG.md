@@ -51,6 +51,11 @@ All notable changes to the Internship Report Reviewer.
   clearing.
 
 ### Added — dashboard
+- **Submit** in the top bar: the student address and the three PDFs, posted
+  to the same endpoint the workflow uses, with the verdict and its findings
+  shown in place and the record opened on the result. Nothing about the review
+  differs from the email route; what differs is not having to own a mailbox to
+  use it.
 - Each of the four figures now shows how close it came to its threshold, with
   the rule named beside the bar. The numbers were unreadable without knowing
   the regulations by heart.

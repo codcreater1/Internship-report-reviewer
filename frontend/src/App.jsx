@@ -9,6 +9,7 @@ import CompletionList from "./components/CompletionList";
 import CompletionDetails from "./components/CompletionDetails";
 import CertificatePanel from "./components/CertificatePanel";
 import ShortcutsSheet from "./components/ShortcutsSheet";
+import UploadPanel from "./components/UploadPanel";
 
 // Matches the n8n Gmail poll interval — refreshing faster only adds load.
 const REFRESH_MS = 60000;
@@ -44,6 +45,7 @@ export default function App() {
   const [lastLoadedAt, setLastLoadedAt] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [flash, setFlash] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const searchRef = useRef(null);
 
@@ -207,6 +209,22 @@ export default function App() {
     [load],
   );
 
+  // A package submitted here lands in whichever tab its verdict puts it in,
+  // and the record opens on it. Somebody who has just uploaded three PDFs is
+  // waiting for an answer, not for a queue position.
+  const onSubmitted = useCallback(
+    async (newId) => {
+      const fresh = await getReportSubmission(newId).catch(() => null);
+      setSelectedId(newId);
+      if (fresh) {
+        const home = COMPLETION_TABS.find((t) => t.match(fresh));
+        if (home) setTab(home.key);
+      }
+      await load();
+    },
+    [load],
+  );
+
   // One line, four seconds. Long enough to read, short enough that it is gone
   // before the next package is open.
   useEffect(() => {
@@ -228,6 +246,7 @@ export default function App() {
         toSignCount={totalCounts.toSign ?? 0}
         lastLoadedAt={lastLoadedAt}
         error={loadError}
+        openUpload={() => setUploading(true)}
       />
 
       <div className="workspace">
@@ -259,6 +278,13 @@ export default function App() {
       </div>
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
+
+      {uploading && (
+        <UploadPanel
+          onClose={() => setUploading(false)}
+          onSubmitted={onSubmitted}
+        />
+      )}
 
       {flash && (
         <div className="flash" role="status">
