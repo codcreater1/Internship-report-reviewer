@@ -41,6 +41,7 @@ from app.core.report_constants import (
     STATUS_REJECTED,
     STATUS_SIGNED,
 )
+from app.core.rules import rules
 from app.core.security import require_api_key
 from app.models.report import (
     ReportListItem,
@@ -197,9 +198,33 @@ def list_for_application(application_id: str) -> list[ReportSubmissionResponse]:
     return report_repository.list_for_application(application_id)
 
 
+@router.get("/rules")
+def get_rules() -> dict:
+    """The thresholds this service is actually enforcing.
+
+    The dashboard draws every figure against the line it is measured against,
+    and a line it had hardcoded would keep drawing the old one after a
+    department changed the file. Published rather than duplicated.
+    """
+    return rules.as_dict()
+
+
 @router.get("/by-id/{submission_id}", response_model=ReportSubmissionResponse)
 def get_report_submission(submission_id: str) -> ReportSubmissionResponse:
     return _require_by_id(submission_id)
+
+
+@router.get("/by-id/{submission_id}/audit")
+def get_report_audit(submission_id: str) -> list[dict]:
+    """Everything recorded against one submission, oldest first.
+
+    The submission itself only carries its current state — signing rewrites the
+    row — so this is where "who signed this, when, and what did they take on"
+    lives. A certificate is a claim about a real person and somebody will
+    eventually ask how it came to be issued.
+    """
+    _require_by_id(submission_id)
+    return report_repository.events_for(submission_id)
 
 
 @router.delete("/by-id/{submission_id}", status_code=204)
@@ -339,6 +364,20 @@ def sign_certificate(
     ).strip()
 
     report_repository.update(submission)
+
+    # The submission row is rewritten by signing, so the state it was signed in
+    # survives only here: who signed, and which open points they took on when
+    # they did. That second part is the one somebody will ask about later.
+    report_repository.add_event(
+        submission.id,
+        "signed",
+        {
+            "coordinator": request.coordinator_name,
+            "note": request.note or "",
+            "acknowledged": [f.code for f in submission.warnings],
+        },
+    )
+
     logger.info(
         "Completion certificate for %s signed by %s (%d open point(s) acknowledged)",
         submission_id,

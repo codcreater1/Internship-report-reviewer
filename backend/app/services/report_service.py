@@ -217,6 +217,15 @@ class ReportService:
             self.index.add(submission.id, report_body)
 
         report_repository.add(submission, report_body=report_body)
+        report_repository.add_event(
+            submission.id,
+            "received",
+            {
+                "status": submission.status,
+                "findings": [f.code for f in submission.findings],
+                "documents": len(submission.documents),
+            },
+        )
         logger.info(
             "Report submission %s from %s: %s (%d clarification(s), %d warning(s))",
             submission.id,
@@ -450,6 +459,14 @@ class ReportService:
                     return
                 submission.advisory = advisory
                 report_repository.update(submission)
+                report_repository.add_event(
+                    submission_id,
+                    "advisory",
+                    {
+                        "available": advisory.available,
+                        "questions": len(advisory.questions_for_coordinator),
+                    },
+                )
             except Exception:  # noqa: BLE001 — a thread that raises tells nobody
                 logger.exception(
                     "Advisory reading failed for submission %s; the verdict is "

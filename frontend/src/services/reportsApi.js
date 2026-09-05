@@ -93,3 +93,22 @@ export async function submitReportPackage({ internEmail, files }) {
   }
   return res.json();
 }
+
+// The thresholds the service is actually enforcing, so the dashboard can draw
+// figures against the line that is really in force rather than one it
+// remembers. Falls to the caller to cope when this is unavailable: an old
+// deployment will not have the route, and a dashboard that refuses to render
+// because it could not read a policy file would be a poor trade.
+export async function getRules() {
+  const res = await fetch(`${API_URL}/reports/rules`);
+  if (!res.ok) throw new Error("Failed to load the rules");
+  return res.json();
+}
+
+// What has happened to one submission, oldest first. Signing rewrites the
+// submission row, so this is where the state it was signed in survives.
+export async function getReportAudit(submissionId) {
+  const res = await fetch(`${API_URL}/reports/by-id/${submissionId}/audit`);
+  if (!res.ok) throw new Error("Failed to load the history");
+  return res.json();
+}

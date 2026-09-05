@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Award } from "lucide-react";
 import "./App.css";
 
-import { getReportSubmission, getReportSubmissions } from "./services/reportsApi";
+import { getReportSubmission, getReportSubmissions, getRules } from "./services/reportsApi";
 import { COMPLETION_TABS, countsByTab, tabFor } from "./services/completionTabs";
+import { DEFAULTS, rulesFrom } from "./services/thresholds";
 import TopBar from "./components/TopBar";
 import CompletionList from "./components/CompletionList";
 import CompletionDetails from "./components/CompletionDetails";
@@ -46,8 +47,18 @@ export default function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [flash, setFlash] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [rules, setRules] = useState(DEFAULTS);
 
   const searchRef = useRef(null);
+
+  // Policy, read once. A department changes these in a file and restarts the
+  // service; the dashboard should draw its bars against what is now enforced
+  // rather than against what it was built with.
+  useEffect(() => {
+    getRules()
+      .then((published) => setRules(rulesFrom(published)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -265,7 +276,7 @@ export default function App() {
           openShortcuts={() => setShowShortcuts(true)}
         />
 
-        <CompletionDetails selected={detail} loading={loadingDetail} />
+        <CompletionDetails selected={detail} loading={loadingDetail} rules={rules} />
 
         {/* Keyed on the submission: switching rows remounts the panel, so a
             half-drawn signature or a ticked acknowledgement can never carry

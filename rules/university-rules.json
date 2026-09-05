@@ -1,0 +1,53 @@
+{
+  "_comment": [
+    "The rules a university sets, in the one place it can change them.",
+    "Everything here is policy: a number a department decided on, not a fact",
+    "about software. Editing this file and restarting the service is the whole",
+    "procedure - no rebuild, no code change, and the dashboard reads the same",
+    "values so the figures it draws are measured against what is actually",
+    "enforced.",
+    "",
+    "What is NOT here, deliberately: which findings reject and which ask for a",
+    "correction. That distinction is the argument this service makes - nobody",
+    "is refused for something they can fix - and it is not a dial.",
+    "",
+    "Point REVIEW_RULES_PATH at another file to run a different faculty's",
+    "rules. A file that cannot be read, or that sets a value outside the",
+    "sensible range, stops the service at startup rather than falling back to",
+    "the defaults: a coordinator who edits a rule and sees the service come up",
+    "would reasonably believe the change took effect."
+  ],
+
+  "attendance": {
+    "min_working_days": 20,
+    "min_daily_hours": 4.0,
+    "max_daily_hours": 11.0,
+    "count_weekend_days": false
+  },
+
+  "report": {
+    "min_words": 500,
+    "required_sections": [
+      "introduction",
+      "company",
+      "work performed",
+      "technologies",
+      "conclusion"
+    ]
+  },
+
+  "evaluation": {
+    "min_score": 60
+  },
+
+  "originality": {
+    "reject_at": 0.8,
+    "warn_at": 0.6
+  },
+
+  "documents": {
+    "required_attachment_count": 3,
+    "max_pages": 120,
+    "min_extractable_chars": 200
+  }
+}

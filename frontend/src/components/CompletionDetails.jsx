@@ -20,6 +20,7 @@ import {
 import { absoluteTime, relativeTime } from "../services/time";
 import { meterFor } from "../services/thresholds";
 import { tintFor } from "../services/tint";
+import AuditTrail from "./AuditTrail";
 import CopyButton from "./CopyButton";
 
 /**
@@ -31,8 +32,8 @@ import CopyButton from "./CopyButton";
  * names the rule in words, and the colour follows the rule rather than
  * decorating it.
  */
-function Stat({ label, value, unit, kind, raw }) {
-  const meter = meterFor(kind, raw);
+function Stat({ label, value, unit, kind, raw, rules }) {
+  const meter = meterFor(kind, raw, rules);
 
   return (
     <div className="stat">
@@ -107,7 +108,7 @@ const BANNER_ICON = {
   rejected: ShieldAlert,
 };
 
-export default function CompletionDetails({ selected, loading }) {
+export default function CompletionDetails({ selected, loading, rules }) {
   if (loading && !selected) {
     return (
       <div className="col">
@@ -203,6 +204,7 @@ export default function CompletionDetails({ selected, loading }) {
             unit={`days · ${selected.total_hours}h`}
             kind="days"
             raw={selected.counted_working_days}
+            rules={rules}
           />
           <Stat
             label="Employer score"
@@ -210,6 +212,7 @@ export default function CompletionDetails({ selected, loading }) {
             unit={selected.evaluation_score !== null ? "/100" : ""}
             kind="score"
             raw={selected.evaluation_score}
+            rules={rules}
           />
           <Stat
             label="Report length"
@@ -217,6 +220,7 @@ export default function CompletionDetails({ selected, loading }) {
             unit="words"
             kind="words"
             raw={selected.report_word_count}
+            rules={rules}
           />
           <Stat
             label="Peak similarity"
@@ -224,6 +228,7 @@ export default function CompletionDetails({ selected, loading }) {
             unit="%"
             kind="similarity"
             raw={selected.max_similarity || 0}
+            rules={rules}
           />
         </div>
 
@@ -439,6 +444,8 @@ export default function CompletionDetails({ selected, loading }) {
             </p>
           </section>
         )}
+
+        <AuditTrail submissionId={selected.id} key={selected.id} />
       </div>
     </div>
   );

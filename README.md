@@ -198,6 +198,8 @@ Nine scenarios, each perturbing exactly one thing so a firing check is diagnosti
 | `POST` | `/reports/by-id/{id}/sign` | **The human gate.** Requires `coordinator_name` |
 | `GET` | `/reports/by-id/{id}/certificate?token=` | Signed certificate, re-downloadable |
 | `GET` | `/reports/for-application/{id}` | Every attempt under one caller-supplied reference |
+| `GET` | `/reports/by-id/{id}/audit` | What happened to this package, in order |
+| `GET` | `/reports/rules` | The thresholds actually being enforced |
 | `GET` | `/health` | Service + AI status |
 
 A held or rejected package returns **HTTP 201 with the status in the body**, not a 4xx. It is a normal outcome, not a protocol error, and n8n should not have to tell them apart.
@@ -250,6 +252,26 @@ The signature panel does not appear at all for a package that is rejected or sti
 It posts the PDFs themselves rather than extracted text, because the backend hashes the exact bytes onto the certificate and refuses scans — extracting in n8n would throw both away. The workflow **stops** at notifying the coordinator; signing is a deliberate action in the dashboard.
 
 Setup: [`docs/n8n-integration.md`](docs/n8n-integration.md).
+
+---
+
+## The rules are a file, not a rebuild
+
+Twenty days, sixty out of a hundred, five hundred words — every one of those is a decision a department made, and departments change them. They live in [`rules/university-rules.json`](rules/university-rules.json); editing it and restarting is the whole procedure. `REVIEW_RULES_PATH` points at another faculty's file.
+
+A file that cannot be read, or that sets a value outside a sensible range — a warning band above the rejection line, a pass mark of 250 — **stops the service at startup** rather than falling back to the defaults. Somebody who edits a threshold, restarts, and sees the service come up healthy would reasonably conclude their change took effect.
+
+What is deliberately not configurable is which findings reject and which ask for a correction. That distinction is the argument this service makes, and a service whose argument is a config value does not have one.
+
+The dashboard reads the same numbers from `GET /reports/rules`, so the bar it draws under each figure is measured against what is actually in force rather than against a copy it remembers.
+
+---
+
+## Who signed it, and what they knew
+
+Signing rewrites the submission row, so the state a package was signed in would otherwise be gone the moment the signature lands. Every event is appended instead: the package arriving with its findings, the advisory reading attaching itself, and the signature with the coordinator's name, their note, and the open points they accepted. `GET /reports/by-id/{id}/audit` returns the lot, and the record shows it as a timeline.
+
+A certificate is an institutional claim about a real person. The question that eventually gets asked is not whether it is signed but who signed it, when, and what they knew at the time.
 
 ---
 

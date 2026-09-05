@@ -17,8 +17,10 @@ copied from a submission accepted last week.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
+from datetime import datetime, timezone
 
 from app.core.config import settings
 from app.core.report_constants import STATUS_APPROVED, STATUS_PENDING, STATUS_SIGNED
@@ -56,6 +58,22 @@ def init_db() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_report_application "
             "ON report_submissions (application_id)"
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS report_events (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                submission_id TEXT NOT NULL,
+                at            TEXT NOT NULL,
+                kind          TEXT NOT NULL,
+                detail        TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_report_events_submission "
+            "ON report_events (submission_id)"
         )
 
 
@@ -151,3 +169,48 @@ def accepted_report_bodies() -> list[tuple[str, str]]:
             _ACCEPTED_STATUSES,
         ).fetchall()
     return [(row["id"], row["report_body"]) for row in rows]
+
+
+# --------------------------------------------------------------------------- #
+# Audit trail
+#
+# A certificate is an institutional claim about a real person, and somebody
+# will eventually ask how it came to be issued: what the checks found on the
+# day, whether the reading arrived, who signed, what they acknowledged when
+# they did. The submission row answers the first question and overwrites the
+# rest — signing rewrites the same row, so the state before the signature is
+# gone the moment it lands.
+#
+# These rows are append-only and never rewritten. They are the difference
+# between "this package is signed" and "this package was signed by this person
+# at this time, having acknowledged these two open points".
+# --------------------------------------------------------------------------- #
+
+
+def add_event(submission_id: str, kind: str, detail: dict | None = None) -> None:
+    """Record one thing that happened to a submission."""
+    with _lock, _connect() as conn:
+        conn.execute(
+            "INSERT INTO report_events (submission_id, at, kind, detail) VALUES (?, ?, ?, ?)",
+            (
+                submission_id,
+                datetime.now(timezone.utc).isoformat(),
+                kind,
+                json.dumps(detail or {}),
+            ),
+        )
+
+
+def events_for(submission_id: str) -> list[dict]:
+    """Everything recorded against one submission, oldest first."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT at, kind, detail FROM report_events "
+            "WHERE submission_id = ? ORDER BY id ASC",
+            (submission_id,),
+        ).fetchall()
+
+    return [
+        {"at": row["at"], "kind": row["kind"], "detail": json.loads(row["detail"] or "{}")}
+        for row in rows
+    ]

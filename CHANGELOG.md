@@ -6,6 +6,26 @@ All notable changes to the Internship Report Reviewer.
 
 ## [Unreleased]
 
+### Added
+
+- The university's thresholds are a file: `rules/university-rules.json`.
+  Twenty days, sixty to pass, five hundred words - all of it policy a
+  department decides and previously all of it compiled in, so changing one
+  meant editing Python and rebuilding an image. A file that cannot be read or
+  that holds a value outside a sensible range stops the service at startup
+  rather than falling back to the defaults: somebody who edits a threshold and
+  sees the service come up healthy would reasonably believe it took effect.
+  Which findings reject and which ask for a correction stays in code, because
+  that distinction is the argument, not a dial.
+- `GET /reports/rules` publishes what is being enforced, and the dashboard
+  draws its bars against that instead of a copy it remembered.
+- An append-only audit trail per submission, and `GET /reports/by-id/{id}/audit`.
+  Signing rewrites the submission row, so the state a package was signed in
+  used to disappear at the moment of signing; the events record the package
+  arriving with its findings, the reading attaching itself, and the signature
+  with the coordinator, their note and the open points they accepted. The
+  record shows it as a timeline.
+
 ### Fixed — extraction
 
 - A blank field adopted the value of the line below it. The label pattern used

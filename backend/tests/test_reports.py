@@ -760,3 +760,100 @@ def test_a_form_with_no_score_asks_rather_than_approves(packages, tmp_path):
 
     assert body["status"] == STATUS_CLARIFICATION
     assert "EVAL_SCORE_MISSING" in {f["code"] for f in body["findings"]}
+
+
+# ---------------------------------------------------------------------------
+# The rules a university sets, and the record of what was done under them
+# ---------------------------------------------------------------------------
+
+
+def test_the_rules_endpoint_publishes_what_is_enforced():
+    """The dashboard measures figures against these, so they cannot be guessed."""
+    from app.core.report_constants import MIN_EVALUATION_SCORE, MIN_WORKING_DAYS
+
+    body = client.get("/reports/rules").json()
+
+    assert body["attendance"]["min_working_days"] == MIN_WORKING_DAYS
+    assert body["evaluation"]["min_score"] == MIN_EVALUATION_SCORE
+    assert body["originality"]["warn_at"] <= body["originality"]["reject_at"]
+
+
+def test_a_rules_file_that_cannot_be_trusted_stops_the_service(tmp_path):
+    """Not a warning and not a fall back to the defaults.
+
+    Somebody editing a threshold, restarting, and seeing the service come up
+    healthy would reasonably conclude their change took effect. Running the old
+    value at that moment is the one thing this must not do.
+    """
+    import json as _json
+
+    from app.core.rules import RulesError, load_rules
+
+    good = _json.loads((Path(__file__).resolve().parents[2] / "rules" / "university-rules.json").read_text(encoding="utf-8"))
+
+    # A warning band above the rejection line can never be reached.
+    inverted = _json.loads(_json.dumps(good))
+    inverted["originality"]["warn_at"] = 0.9
+    inverted["originality"]["reject_at"] = 0.5
+    path = tmp_path / "inverted.json"
+    path.write_text(_json.dumps(inverted), encoding="utf-8")
+    with pytest.raises(RulesError):
+        load_rules(path)
+
+    # A whole section missing.
+    partial = _json.loads(_json.dumps(good))
+    del partial["evaluation"]
+    path = tmp_path / "partial.json"
+    path.write_text(_json.dumps(partial), encoding="utf-8")
+    with pytest.raises(RulesError):
+        load_rules(path)
+
+    # A score outside the scale it is scored on.
+    silly = _json.loads(_json.dumps(good))
+    silly["evaluation"]["min_score"] = 250
+    path = tmp_path / "silly.json"
+    path.write_text(_json.dumps(silly), encoding="utf-8")
+    with pytest.raises(RulesError):
+        load_rules(path)
+
+    with pytest.raises(RulesError):
+        load_rules(tmp_path / "nothing-here.json")
+
+    # And a file that says something different is read as saying it.
+    changed = _json.loads(_json.dumps(good))
+    changed["attendance"]["min_working_days"] = 15
+    path = tmp_path / "changed.json"
+    path.write_text(_json.dumps(changed), encoding="utf-8")
+    assert load_rules(path).min_working_days == 15
+
+
+def test_the_audit_trail_records_who_signed_and_what_they_took_on(packages, tmp_path):
+    """Signing rewrites the submission row; this is what survives it."""
+    body = submit(packages["clean"]).json()
+
+    trail = client.get(f"/reports/by-id/{body['id']}/audit").json()
+    # The reading runs on its own thread, so whether it has landed by now is a
+    # race. What is not a race is that receiving the package comes first.
+    assert trail[0]["kind"] == "received"
+    assert set(e["kind"] for e in trail) <= {"received", "advisory"}
+    assert trail[0]["detail"]["status"] == body["status"]
+    assert trail[0]["detail"]["documents"] == 3
+
+    client.post(
+        f"/reports/by-id/{body['id']}/sign",
+        json={"coordinator_name": "dr Anna Zielinska", "note": "checked with the company"},
+    )
+
+    trail = client.get(f"/reports/by-id/{body['id']}/audit").json()
+    kinds = [e["kind"] for e in trail]
+    assert kinds[0] == "received"
+    assert "signed" in kinds
+
+    signed = next(e for e in trail if e["kind"] == "signed")
+    assert signed["detail"]["coordinator"] == "dr Anna Zielinska"
+    assert signed["detail"]["note"] == "checked with the company"
+    assert signed["at"] >= trail[0]["at"]
+
+
+def test_the_audit_trail_of_an_unknown_submission_is_a_404():
+    assert client.get("/reports/by-id/nope/audit").status_code == 404
