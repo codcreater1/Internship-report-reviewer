@@ -20,6 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ app/
 
+# The university's thresholds. Shipped so the image runs without configuration;
+# a deployment that sets its own points REVIEW_RULES_PATH at a mounted file.
+COPY rules/ rules/
+
 RUN mkdir -p /data/tmp
 
 ENV REVIEW_STORAGE_ROOT=/data/tmp

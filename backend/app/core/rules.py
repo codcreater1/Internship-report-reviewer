@@ -30,9 +30,21 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Shipped alongside the code, one directory above the backend package, so the
-# repository runs without configuration and a deployment can mount its own.
-DEFAULT_RULES_PATH = Path(__file__).resolve().parents[3] / "rules" / "university-rules.json"
+# Shipped next to the application package. Searched rather than computed:
+# the image has the app at /app/app with the rules at /app/rules, and a
+# checkout has them at backend/app and backend/rules — the same relationship,
+# a different number of directories up depending on where the package root
+# sits. Hardcoding one of those depths is how this first shipped, and the
+# container went looking in "/rules" and refused to start.
+_CANDIDATE_RULES_PATHS = tuple(
+    parent / "rules" / "university-rules.json"
+    for parent in Path(__file__).resolve().parents[2:5]
+)
+
+DEFAULT_RULES_PATH = next(
+    (p for p in _CANDIDATE_RULES_PATHS if p.is_file()),
+    _CANDIDATE_RULES_PATHS[0],
+)
 
 
 class RulesError(RuntimeError):
@@ -114,7 +126,14 @@ def load_rules(path: Path | None = None) -> Rules:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        raise RulesError(f"No rules file at {path}") from None
+        # Say where it looked. A startup failure whose message is a path that
+        # does not exist leaves the reader guessing which path it should have
+        # been, which is exactly the position this line was written from.
+        looked = ", ".join(str(p) for p in _CANDIDATE_RULES_PATHS)
+        raise RulesError(
+            f"No rules file at {path}. Set REVIEW_RULES_PATH, or place one at "
+            f"any of: {looked}"
+        ) from None
     except json.JSONDecodeError as exc:
         raise RulesError(f"{path} is not valid JSON: {exc}") from None
 

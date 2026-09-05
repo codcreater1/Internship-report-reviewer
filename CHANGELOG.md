@@ -8,7 +8,7 @@ All notable changes to the Internship Report Reviewer.
 
 ### Added
 
-- The university's thresholds are a file: `rules/university-rules.json`.
+- The university's thresholds are a file: `backend/rules/university-rules.json`.
   Twenty days, sixty to pass, five hundred words - all of it policy a
   department decides and previously all of it compiled in, so changing one
   meant editing Python and rebuilding an image. A file that cannot be read or

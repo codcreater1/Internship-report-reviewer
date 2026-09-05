@@ -257,7 +257,7 @@ Setup: [`docs/n8n-integration.md`](docs/n8n-integration.md).
 
 ## The rules are a file, not a rebuild
 
-Twenty days, sixty out of a hundred, five hundred words — every one of those is a decision a department made, and departments change them. They live in [`rules/university-rules.json`](rules/university-rules.json); editing it and restarting is the whole procedure. `REVIEW_RULES_PATH` points at another faculty's file.
+Twenty days, sixty out of a hundred, five hundred words — every one of those is a decision a department made, and departments change them. They live in [`backend/rules/university-rules.json`](backend/rules/university-rules.json); editing it and restarting is the whole procedure. `REVIEW_RULES_PATH` points at another faculty's file.
 
 A file that cannot be read, or that sets a value outside a sensible range — a warning band above the rejection line, a pass mark of 250 — **stops the service at startup** rather than falling back to the defaults. Somebody who edits a threshold, restarts, and sees the service come up healthy would reasonably conclude their change took effect.
 

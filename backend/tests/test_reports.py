@@ -789,7 +789,7 @@ def test_a_rules_file_that_cannot_be_trusted_stops_the_service(tmp_path):
 
     from app.core.rules import RulesError, load_rules
 
-    good = _json.loads((Path(__file__).resolve().parents[2] / "rules" / "university-rules.json").read_text(encoding="utf-8"))
+    good = _json.loads((Path(__file__).resolve().parents[1] / "rules" / "university-rules.json").read_text(encoding="utf-8"))
 
     # A warning band above the rejection line can never be reached.
     inverted = _json.loads(_json.dumps(good))
@@ -857,3 +857,21 @@ def test_the_audit_trail_records_who_signed_and_what_they_took_on(packages, tmp_
 
 def test_the_audit_trail_of_an_unknown_submission_is_a_404():
     assert client.get("/reports/by-id/nope/audit").status_code == 404
+
+
+def test_the_rules_are_looked_for_where_both_layouts_put_them():
+    """A checkout and the image differ by one directory, and only one shipped.
+
+    In a checkout the package is backend/app and the rules are backend/rules;
+    in the image the package is /app/app and the rules are /app/rules. The same
+    relationship, a different depth from this file — and the first version
+    computed a single depth, so the container went looking in "/rules" and
+    refused to start with the thresholds sitting one directory away.
+    """
+    from app.core import rules as rules_module
+
+    package_root = Path(rules_module.__file__).resolve().parents[1]  # .../app
+    assert package_root.parent / "rules" / "university-rules.json" in (
+        rules_module._CANDIDATE_RULES_PATHS
+    )
+    assert rules_module.DEFAULT_RULES_PATH.is_file()
