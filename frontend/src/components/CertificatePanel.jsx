@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Award, Download, Lock, PenLine, ShieldAlert } from "lucide-react";
 
 import { certificateUrl, signCertificate } from "../services/reportsApi";
+import { absoluteTime } from "../services/time";
 
 // Remembered across submissions: a coordinator signing a queue should not
 // retype their own name for every student. Local to this browser only — the
 // backend records the name against each signature.
 const NAME_KEY = "irr.coordinatorName";
 
-export default function CertificatePanel({ selected, refresh }) {
+export default function CertificatePanel({ selected, onSigned }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const inked = useRef(false);
@@ -21,27 +22,53 @@ export default function CertificatePanel({ selected, refresh }) {
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState("");
 
-  // Configure the drawing context once. Per-submission state is not reset
-  // here: App keys this component on the submission id, so switching rows
-  // remounts it and every useState above starts fresh.
-  useEffect(() => {
+  // Match the backing store to the displayed size so strokes are crisp on
+  // high-DPI screens and land where the cursor is.
+  const fitCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Match the backing store to the displayed size so strokes are crisp on
-    // high-DPI screens and land where the cursor is.
     const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
+    const width = Math.round(rect.width * dpr);
+    const height = Math.round(rect.height * dpr);
+    if (canvas.width === width && canvas.height === height) return;
+
+    // Resizing a canvas clears it, so anything drawn is gone either way. Say
+    // so by resetting the flag rather than leaving a signature the coordinator
+    // can no longer see but the button still believes in.
+    canvas.width = width;
+    canvas.height = height;
+    inked.current = false;
 
     const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#14161a";
   }, []);
+
+  // Per-submission state is not reset here: App keys this component on the
+  // submission id, so switching rows remounts it and every useState above
+  // starts fresh.
+  useEffect(() => {
+    fitCanvas();
+
+    // The pad is inside a column that changes width when the window does, and
+    // on a narrow screen it is in a stacked layout that settles after mount.
+    // Without this the drawing surface keeps its first measurement and strokes
+    // land somewhere other than the cursor.
+    const canvas = canvasRef.current;
+    if (!canvas || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(fitCanvas);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [fitCanvas]);
 
   if (!selected) {
     return (
@@ -116,15 +143,17 @@ export default function CertificatePanel({ selected, refresh }) {
     setSigning(true);
     try {
       localStorage.setItem(NAME_KEY, coordinatorName.trim());
-      const updated = await signCertificate(selected.id, {
+      await signCertificate(selected.id, {
         coordinatorName: coordinatorName.trim(),
         signatureImageBase64: canvasRef.current.toDataURL("image/png"),
         acknowledgeWarnings: acknowledged,
         note,
       });
-      await refresh();
-      const url = certificateUrl(updated?.signed_certificate_download_url);
-      if (url) window.open(url, "_blank");
+      // The certificate is not opened for them here. A window.open() after an
+      // await is not a user gesture any more, so browsers block it silently:
+      // the coordinator saw nothing happen and had no download either. The
+      // panel now settles into its issued state with the link in it.
+      await onSigned(selected.id);
     } catch (err) {
       // The backend's refusals are written to be read by a person.
       setError(err.message || "Signing failed.");
@@ -146,7 +175,15 @@ export default function CertificatePanel({ selected, refresh }) {
               <Award size={20} />
             </div>
             <h3>Certificate issued</h3>
-            <p>Signed by {selected.signed_by}</p>
+            <p>
+              Signed by {selected.signed_by}
+              {selected.signed_at && (
+                <>
+                  <br />
+                  <span className="issuedStamp">{absoluteTime(selected.signed_at)}</span>
+                </>
+              )}
+            </p>
 
             <a className="download" href={signedUrl} target="_blank" rel="noreferrer">
               <Download size={15} /> Download certificate
@@ -258,7 +295,11 @@ export default function CertificatePanel({ selected, refresh }) {
             </button>
           </div>
 
-          {error && <p className="error">{error}</p>}
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
         </div>
       )}
     </aside>

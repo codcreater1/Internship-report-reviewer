@@ -1,7 +1,8 @@
-import { Inbox } from "lucide-react";
+import { Inbox, RefreshCw, SearchX, ServerCrash } from "lucide-react";
 
 import { COMPLETION_TABS, tabFor } from "../services/completionTabs";
 import { reportStatusLabel } from "../services/status";
+import { absoluteTime, relativeTime } from "../services/time";
 
 function initials(name = "") {
   return name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
@@ -9,14 +10,19 @@ function initials(name = "") {
 
 export default function CompletionList({
   loading,
+  error,
+  retry,
   submissions,
   selectedId,
   setSelectedId,
   tab,
   setTab,
   counts,
+  query,
+  elsewhere,
 }) {
   const active = tabFor(tab);
+  const searching = Boolean(query.trim());
 
   return (
     <div className="col queue">
@@ -44,14 +50,33 @@ export default function CompletionList({
         <p className="kbdHint">
           <kbd>↑</kbd>
           <kbd>↓</kbd>
-          <span>to move through the queue</span>
+          <span>to move</span>
+          <kbd>/</kbd>
+          <span>to search</span>
         </p>
       </div>
 
       <div className="colScroll">
+        {/* A failed reload is reported where the rows would have been. Showing
+            the tab's usual empty state here would tell a coordinator their
+            queue is clear when it is only unreachable. */}
+        {error && (
+          <div className="empty error" role="alert">
+            <div className="emptyIcon danger">
+              <ServerCrash size={22} />
+            </div>
+            <h3>Queue unavailable</h3>
+            <p>{error}</p>
+            <button type="button" className="btn ghost" onClick={retry}>
+              <RefreshCw size={14} /> Try again
+            </button>
+          </div>
+        )}
+
         {/* Shapes the size of the rows that are coming, so the list does not
             reflow when the data lands. */}
-        {loading &&
+        {!error &&
+          loading &&
           submissions.length === 0 &&
           [0, 1, 2, 3].map((i) => (
             <div className="skeleton" key={i} style={{ "--i": i }}>
@@ -63,13 +88,30 @@ export default function CompletionList({
             </div>
           ))}
 
-        {!loading && submissions.length === 0 && (
+        {!error && !loading && submissions.length === 0 && (
           <div className="empty">
             <div className="emptyIcon">
-              <Inbox size={22} />
+              {searching ? <SearchX size={22} /> : <Inbox size={22} />}
             </div>
-            <h3>{active.empty.title}</h3>
-            <p>{active.empty.body}</p>
+            <h3>{searching ? "No match here" : active.empty.title}</h3>
+            <p>
+              {searching
+                ? `Nothing in ${active.label.toLowerCase()} matches “${query.trim()}”.`
+                : active.empty.body}
+            </p>
+
+            {/* The match exists, just not in the tab that happens to be open.
+                Saying where — and going there in one click — is the whole
+                reason a search that ignores tabs is worth having. */}
+            {elsewhere && (
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => setTab(elsewhere.key)}
+              >
+                {elsewhere.count} in {elsewhere.label}
+              </button>
+            )}
           </div>
         )}
 
@@ -77,6 +119,7 @@ export default function CompletionList({
           // What a coordinator acts on: how many things the student must fix,
           // or how many points need a decision before signing.
           const badge = s.clarification_count || s.warning_count;
+          const arrived = relativeTime(s.created_at);
 
           return (
             <button
@@ -85,12 +128,20 @@ export default function CompletionList({
               className={s.id === selectedId ? "row selected" : "row"}
               style={{ "--i": i }}
               onClick={() => setSelectedId(s.id)}
+              aria-label={`${s.student_name || "Unnamed student"}, ${reportStatusLabel(
+                s.status,
+              )}${arrived ? `, received ${arrived}` : ""}`}
             >
               <div className="avatar">{initials(s.student_name || "?")}</div>
 
               <div className="rowMain">
                 <div className="rowName">{s.student_name || "Unnamed student"}</div>
                 <div className="rowSub">{s.company || "No host organisation stated"}</div>
+                {arrived && (
+                  <div className="rowTime" title={absoluteTime(s.created_at)}>
+                    {arrived}
+                  </div>
+                )}
               </div>
 
               <div className="rowSide">

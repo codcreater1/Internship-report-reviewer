@@ -215,7 +215,14 @@ There is no navigation sidebar: this service does one thing, so the width goes
 to findings text and document hashes instead. The queue is grouped by **who has
 to act next** — *To sign*, *With student*, *Signed* — rather than by raw status,
 because that is the question when you are working a queue. **↑/↓ walk it**
-without reaching for the mouse.
+without reaching for the mouse, **/** jumps to the search box and **Esc** clears
+it. Search runs across all three tabs: asking where a student is and being told
+"not in the tab you happen to have open" is not an answer, so a match somewhere
+else is offered as one click rather than hidden.
+
+Every row carries how long it has been waiting. A queue sorted newest-first
+with no times on it cannot answer the only scheduling question a coordinator
+has, which is what has been sitting there longest.
 
 Motion is kept under 300ms and mostly carries structure: rows arrive staggered,
 the detail panel replays its entrance on each selection so it reads as a new
@@ -224,7 +231,9 @@ the certificate card, which tilts into place and stamps its seal. That is the
 ceremonial object of the whole service, and it is the only thing here allowed
 to behave like one.
 
-Opening a submission shows the figures the certificate would assert, the findings grouped by what they demand (things the student must fix separated from things the coordinator should decide), the exact wording the student was emailed, and the three PDFs with their hashes.
+Opening a submission shows the figures the certificate would assert, the findings grouped by what they demand (things the student must fix separated from things the coordinator should decide), the exact wording the student was emailed, and the three PDFs with their hashes — each copyable, along with the package hash the certificate prints, because checking a certificate against its documents means comparing that value.
+
+When the service cannot be reached the queue says so and offers a retry. An empty queue and an unreachable one look nothing alike, which matters to somebody whose job is to work through whatever is in it.
 
 The signature panel does not appear at all for a package that is rejected or still waiting on the student, and one carrying open points needs the box ticked before the button enables — the same refusals the API makes, made visible instead of arriving as an error after the fact.
 

@@ -1,4 +1,6 @@
-import { GraduationCap, Moon, RefreshCw, Search, Sun } from "lucide-react";
+import { GraduationCap, Moon, RefreshCw, Search, Sun, WifiOff } from "lucide-react";
+
+import { relativeTime } from "../services/time";
 
 /**
  * One bar instead of a navigation sidebar. This service has a single view, so
@@ -8,11 +10,14 @@ import { GraduationCap, Moon, RefreshCw, Search, Sun } from "lucide-react";
 export default function TopBar({
   query,
   setQuery,
+  searchRef,
   loading,
   refresh,
   theme,
   toggleTheme,
   toSignCount,
+  lastLoadedAt,
+  error,
 }) {
   return (
     <header className="topbar">
@@ -29,19 +34,37 @@ export default function TopBar({
       <label className="topSearch">
         <Search size={15} />
         <input
+          ref={searchRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search student, company or ID"
           aria-label="Search submissions"
         />
+        {/* Shown until it is used, then it stops taking up room. */}
+        {!query && <kbd className="searchKey">/</kbd>}
       </label>
 
       <div className="topActions">
+        {/* A queue that cannot be reloaded is worse than an empty one, because
+            it looks the same. This says which of the two you are looking at. */}
+        {error && (
+          <span className="pill danger" role="status">
+            <WifiOff size={13} />
+            Offline
+          </span>
+        )}
+
         {/* Only surfaced when something is genuinely waiting on a coordinator.
             A counter that is always lit stops being read. */}
-        {toSignCount > 0 && (
+        {!error && toSignCount > 0 && (
           <span className="pill">
             <b className="tnum">{toSignCount}</b> awaiting signature
+          </span>
+        )}
+
+        {!error && lastLoadedAt && (
+          <span className="topStamp" title="The queue reloads every minute">
+            updated {relativeTime(lastLoadedAt)}
           </span>
         )}
 

@@ -2,9 +2,11 @@ import {
   AlertCircle,
   Brain,
   CheckCircle2,
+  Clock3,
   FileText,
   GraduationCap,
   Info,
+  Mail,
   ShieldAlert,
 } from "lucide-react";
 
@@ -15,6 +17,8 @@ import {
   reportStatusLabel,
   severityLabel,
 } from "../services/status";
+import { absoluteTime, relativeTime } from "../services/time";
+import CopyButton from "./CopyButton";
 
 function initials(name = "") {
   return name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
@@ -88,9 +92,17 @@ export default function CompletionDetails({ selected, loading }) {
   const findings = selected.findings || [];
   const advisory = selected.advisory;
   const BannerIcon = BANNER_ICON[selected.status] || Info;
+  const arrived = relativeTime(selected.created_at);
+  const emailBody = selected.email_body || "";
 
   return (
     <div className="col">
+      {/* Switching rows keeps the previous record on screen until the next one
+          arrives, which is right — a blank panel between two clicks is worse
+          than a stale one — but it has to say that it is fetching, or a slow
+          connection looks like a click that did not register. */}
+      {loading && <div className="colLoading" aria-hidden="true" />}
+
       {/* Keyed on the submission so the entrance replays on every selection:
           the panel reads as a new document rather than mutated text. */}
       <div className="colScroll detailEnter" key={selected.id}>
@@ -101,12 +113,31 @@ export default function CompletionDetails({ selected, loading }) {
               <h2 className="detailName">{selected.student_name || "Unnamed student"}</h2>
               <div className="detailSub">
                 <span className="idChip">{selected.student_id || "no id"}</span>
-                <span>{selected.intern_email}</span>
+                {/* The address the package arrived from, and the one a reply
+                    goes back to. Making it a mailto is the difference between
+                    reading it and using it. */}
+                <a className="mailLink" href={`mailto:${selected.intern_email}`}>
+                  <Mail size={12} />
+                  {selected.intern_email}
+                </a>
                 <span className={`status ${selected.status}`}>
                   <span className="dot" />
                   {reportStatusLabel(selected.status)}
                 </span>
               </div>
+              {arrived && (
+                <div className="detailStamp" title={absoluteTime(selected.created_at)}>
+                  <Clock3 size={12} />
+                  Received {arrived}
+                  {selected.signed_at && (
+                    <>
+                      <span className="stampSep">·</span>
+                      Signed {relativeTime(selected.signed_at)}
+                      {selected.signed_by ? ` by ${selected.signed_by}` : ""}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -178,7 +209,7 @@ export default function CompletionDetails({ selected, loading }) {
               <div className="findings">
                 {items.map((f, i) => (
                   <article
-                    key={f.code}
+                    key={`${f.code}-${i}`}
                     className={`finding ${f.severity}`}
                     style={{ "--i": i }}
                   >
@@ -210,6 +241,27 @@ export default function CompletionDetails({ selected, loading }) {
             <p className="sectionNote">
               Every check passed. Nothing was raised against this submission.
             </p>
+          </section>
+        )}
+
+        {/* The message the student actually received. A coordinator ringing a
+            student about their submission is at a disadvantage if they cannot
+            see what the service already told them — and the wording is worth
+            checking, since it is assembled from the findings above. */}
+        {emailBody && (
+          <section className="section">
+            <div className="sectionHead">
+              <Mail size={14} />
+              <h3>Sent to the student</h3>
+              <CopyButton value={emailBody} label="Copy the email text" />
+            </div>
+
+            <div className="emailCard">
+              {selected.email_subject && (
+                <p className="emailSubject">{selected.email_subject}</p>
+              )}
+              <pre className="emailBody">{emailBody}</pre>
+            </div>
           </section>
         )}
 
@@ -315,9 +367,23 @@ export default function CompletionDetails({ selected, loading }) {
                   <code className="docHash" title={doc.sha256}>
                     {doc.sha256.slice(0, 10)}…
                   </code>
+                  <CopyButton value={doc.sha256} label="Copy this document's hash" />
                 </a>
               ))}
             </div>
+
+            {/* The one hash that ends up printed on the certificate. Checking a
+                certificate against its documents means rehashing all three and
+                comparing this value, so it has to be here to copy. */}
+            {selected.package_sha256 && (
+              <div className="packageHash">
+                <span className="packageHashLabel">Package hash</span>
+                <code title={selected.package_sha256}>
+                  {selected.package_sha256.slice(0, 24)}…
+                </code>
+                <CopyButton value={selected.package_sha256} label="Copy the package hash" />
+              </div>
+            )}
 
             <p className="sectionNote" style={{ marginTop: 10, marginBottom: 0 }}>
               The signed certificate carries the hash of these exact files, so it

@@ -6,6 +6,42 @@ All notable changes to the Internship Report Reviewer.
 
 ## [Unreleased]
 
+### Fixed — dashboard
+- The layout broke below roughly 780px: the top bar laid brand, search and
+  actions out in one unwrapping row, so a phone got a page that scrolled
+  sideways with the search box off the edge. The bar wraps, the tab strip
+  scrolls, and the queue takes a share of the viewport instead of a fixed slab.
+- Search was scoped to the open tab while the tab counts ignored it, so a
+  coordinator could search a student's name, see "no certificates yet", and
+  read the strip above it claiming there was one. Search now runs across the
+  queue, the counts follow it, and a match in another tab is offered as a
+  button rather than left to be guessed at.
+- A failed reload emptied the list and left the tab's ordinary empty state on
+  screen — a service that is down and a queue that is clear looked identical.
+  The queue now says it could not be reached, keeps the rows it already had,
+  and offers a retry.
+- Signing dropped the coordinator onto an unrelated student with no
+  confirmation, and tried to open the certificate with a `window.open()` that
+  browsers block because it happens after an await. Signing now follows the
+  package into *Signed* and settles into the issued card, download link and
+  all.
+- The signature pad measured itself once. Resizing the window left strokes
+  landing somewhere other than the cursor; it now re-fits and says so by
+  clearing.
+
+### Added — dashboard
+- Arrival times on every row and in the record, relative in the list and exact
+  on hover.
+- The email the student was actually sent, with its subject, in the record.
+  The backend has always returned it and the dashboard never showed it, which
+  left a coordinator ringing a student unable to see what the service had
+  already told them.
+- Copy buttons on each document hash and on the package hash printed on the
+  certificate, with a fallback for the plain-HTTP origins where
+  `navigator.clipboard` does not exist.
+- `/` focuses the search, `Esc` clears it from anywhere, and the student's
+  address is a mailto link.
+
 ### Changed
 - The advisory reading now runs after the response has been sent, on its own
   thread, and is attached to the stored submission when it finishes. Three
