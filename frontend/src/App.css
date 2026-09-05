@@ -346,11 +346,11 @@
   border: 1px solid var(--border);
 }
 
-.row.selected .avatar {
-  color: var(--accent);
-  background: var(--accent-quiet);
-  border-color: var(--accent-line);
-}
+/* The open case used to repaint its initials bronze. It no longer does:
+   the initials carry a tint taken from the student name, and a colour that
+   changes when you click the row is a colour you cannot navigate by.
+   Selection is already marked by the accent bar, the raised surface and the
+   border - three signals is enough. */
 
 .rowMain {
   flex: 1;
@@ -1713,5 +1713,197 @@ kbd {
     animation: none;
     width: 100%;
     opacity: 0.5;
+  }
+}
+
+/* ==========================================================================
+   Figures against their thresholds, and a name you can find by colour
+   ========================================================================== */
+
+.statMeter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.meter {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.meterFill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--text-faint);
+  /* Grows into place on selection, which reads as measurement rather than
+     decoration. Under prefers-reduced-motion it is simply drawn. */
+  transform-origin: left;
+  animation: meterGrow 520ms var(--ease) both;
+}
+
+.meter.ok .meterFill { background: var(--ok); }
+.meter.warn .meterFill { background: var(--warn); }
+.meter.danger .meterFill { background: var(--danger); }
+
+/* Where the rule sits, when the rule is a line inside the range rather than
+   the end of it. */
+.meterMark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  border-radius: 99px;
+  /* Legible over the filled part and over the empty track, in both themes:
+     the notch is the rule, and a rule you cannot see is not one. */
+  background: var(--text);
+  opacity: 0.45;
+}
+
+.meterCaption {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes meterGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meterFill {
+    animation: none;
+  }
+}
+
+/* The initials block takes a hue from the name. Low saturation on purpose:
+   it helps you find a case again, and must never be mistaken for a verdict. */
+.avatar {
+  color: hsl(var(--tint, 40) 30% 72%);
+  background: hsl(var(--tint, 40) 34% 14%);
+  border-color: hsl(var(--tint, 40) 30% 26%);
+}
+
+:root[data-theme="light"] .avatar {
+  color: hsl(var(--tint, 40) 34% 32%);
+  background: hsl(var(--tint, 40) 46% 94%);
+  border-color: hsl(var(--tint, 40) 34% 84%);
+}
+
+/* Same values again for the system-preference case, matching how index.css
+   layers its tokens: dark is the base, light is the exception, and an
+   explicit choice wins over both. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .avatar {
+    color: hsl(var(--tint, 40) 34% 32%);
+    background: hsl(var(--tint, 40) 46% 94%);
+    border-color: hsl(var(--tint, 40) 34% 84%);
+  }
+}
+
+/* ==========================================================================
+   Keyboard sheet
+   ========================================================================== */
+
+.kbdMore {
+  margin-left: auto;
+  opacity: 0.8;
+  transition: opacity var(--fast);
+}
+
+.kbdMore:hover {
+  opacity: 1;
+}
+
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  animation: sheetFade 160ms var(--ease) both;
+}
+
+.sheet {
+  width: min(380px, 100%);
+  padding: 18px 20px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: sheetRise 200ms var(--ease) both;
+}
+
+.sheetHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sheetHead h2 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sheetList li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sheetKeys {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  width: 62px;
+}
+
+.sheetNote {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+@keyframes sheetFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheetRise {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheetBackdrop,
+  .sheet {
+    animation: none;
   }
 }

@@ -30,6 +30,14 @@ All notable changes to the Internship Report Reviewer.
   clearing.
 
 ### Added — dashboard
+- Each of the four figures now shows how close it came to its threshold, with
+  the rule named beside the bar. The numbers were unreadable without knowing
+  the regulations by heart.
+- The initials block takes a stable colour from the student name, so a case is
+  findable by colour in a long queue. The open row no longer repaints its
+  initials bronze — a colour that changes on click is not one you can navigate
+  by, and selection is already marked three other ways.
+- A keyboard sheet behind ? and a clickable hint that says it is there.
 - Arrival times on every row and in the record, relative in the list and exact
   on hover.
 - The email the student was actually sent, with its subject, in the record.

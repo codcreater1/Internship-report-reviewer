@@ -220,6 +220,8 @@ it. Search runs across all three tabs: asking where a student is and being told
 "not in the tab you happen to have open" is not an answer, so a match somewhere
 else is offered as one click rather than hidden.
 
+The four figures a certificate would assert each carry a bar showing how close they came to the rule they are measured against, with the rule written next to it — *20 required*, *60 to pass*, *500 required*, *80% rejects*. A number on its own cannot be read without having memorised the regulations; 30 days and 18 days look identical until one of them is next to the line it missed. The initials block takes a colour from the student name, stable everywhere, so a case can be found again by colour before it can be found by spelling. It carries no meaning: status has its own colour, and a tint that looked like a verdict would be worse than none.
+
 Every row carries how long it has been waiting. A queue sorted newest-first
 with no times on it cannot answer the only scheduling question a coordinator
 has, which is what has been sitting there longest.

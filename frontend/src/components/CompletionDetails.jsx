@@ -18,7 +18,50 @@ import {
   severityLabel,
 } from "../services/status";
 import { absoluteTime, relativeTime } from "../services/time";
+import { meterFor } from "../services/thresholds";
+import { tintFor } from "../services/tint";
 import CopyButton from "./CopyButton";
+
+/**
+ * One figure, and how close it came to the line it is measured against.
+ *
+ * The four numbers were readable before and meant nothing on their own: 30
+ * days is fine and 18 is not, and only somebody who has memorised the rules
+ * could tell which they were looking at. The bar carries that, the caption
+ * names the rule in words, and the colour follows the rule rather than
+ * decorating it.
+ */
+function Stat({ label, value, unit, kind, raw }) {
+  const meter = meterFor(kind, raw);
+
+  return (
+    <div className="stat">
+      <div className="statLabel">{label}</div>
+      <div className="statValue">
+        {value}
+        {unit && <small>{unit}</small>}
+      </div>
+
+      {meter && (
+        <div className="statMeter">
+          <div className={`meter ${meter.tone}`}>
+            <span
+              className="meterFill"
+              style={{ width: `${Math.round(meter.ratio * 100)}%` }}
+            />
+            {meter.mark !== undefined && (
+              <span
+                className="meterMark"
+                style={{ left: `${Math.round(meter.mark * 100)}%` }}
+              />
+            )}
+          </div>
+          <span className="meterCaption">{meter.caption}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function initials(name = "") {
   return name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
@@ -108,7 +151,12 @@ export default function CompletionDetails({ selected, loading }) {
       <div className="colScroll detailEnter" key={selected.id}>
         <div className="detailHead" style={{ paddingLeft: 0, paddingRight: 0 }}>
           <div className="detailTop">
-            <div className="avatar lg">{initials(selected.student_name || "?")}</div>
+            <div
+              className="avatar lg"
+              style={{ "--tint": tintFor(selected.student_name || "?") }}
+            >
+              {initials(selected.student_name || "?")}
+            </div>
             <div style={{ minWidth: 0 }}>
               <h2 className="detailName">{selected.student_name || "Unnamed student"}</h2>
               <div className="detailSub">
@@ -149,34 +197,34 @@ export default function CompletionDetails({ selected, loading }) {
 
         {/* The figures the certificate would assert. */}
         <div className="stats">
-          <div className="stat">
-            <div className="statLabel">Working days</div>
-            <div className="statValue">
-              {selected.counted_working_days}
-              <small>days · {selected.total_hours}h</small>
-            </div>
-          </div>
-          <div className="stat">
-            <div className="statLabel">Employer score</div>
-            <div className="statValue">
-              {selected.evaluation_score ?? "—"}
-              {selected.evaluation_score !== null && <small>/100</small>}
-            </div>
-          </div>
-          <div className="stat">
-            <div className="statLabel">Report length</div>
-            <div className="statValue">
-              {selected.report_word_count}
-              <small>words</small>
-            </div>
-          </div>
-          <div className="stat">
-            <div className="statLabel">Peak similarity</div>
-            <div className="statValue">
-              {Math.round((selected.max_similarity || 0) * 100)}
-              <small>%</small>
-            </div>
-          </div>
+          <Stat
+            label="Working days"
+            value={selected.counted_working_days}
+            unit={`days · ${selected.total_hours}h`}
+            kind="days"
+            raw={selected.counted_working_days}
+          />
+          <Stat
+            label="Employer score"
+            value={selected.evaluation_score ?? "—"}
+            unit={selected.evaluation_score !== null ? "/100" : ""}
+            kind="score"
+            raw={selected.evaluation_score}
+          />
+          <Stat
+            label="Report length"
+            value={selected.report_word_count}
+            unit="words"
+            kind="words"
+            raw={selected.report_word_count}
+          />
+          <Stat
+            label="Peak similarity"
+            value={Math.round((selected.max_similarity || 0) * 100)}
+            unit="%"
+            kind="similarity"
+            raw={selected.max_similarity || 0}
+          />
         </div>
 
         <div className="metaGrid">

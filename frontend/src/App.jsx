@@ -7,6 +7,7 @@ import TopBar from "./components/TopBar";
 import CompletionList from "./components/CompletionList";
 import CompletionDetails from "./components/CompletionDetails";
 import CertificatePanel from "./components/CertificatePanel";
+import ShortcutsSheet from "./components/ShortcutsSheet";
 
 // Matches the n8n Gmail poll interval — refreshing faster only adds load.
 const REFRESH_MS = 60000;
@@ -40,6 +41,7 @@ export default function App() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [lastLoadedAt, setLastLoadedAt] = useState(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const searchRef = useRef(null);
 
@@ -135,6 +137,12 @@ export default function App() {
         return;
       }
 
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
+
       const step = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
       if (step === 0 || filtered.length === 0) return;
 
@@ -222,6 +230,7 @@ export default function App() {
           counts={counts}
           query={query}
           elsewhere={elsewhere}
+          openShortcuts={() => setShowShortcuts(true)}
         />
 
         <CompletionDetails selected={detail} loading={loadingDetail} />
@@ -235,6 +244,8 @@ export default function App() {
           onSigned={onSigned}
         />
       </div>
+
+      {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Inbox, RefreshCw, SearchX, ServerCrash } from "lucide-react";
 import { COMPLETION_TABS, tabFor } from "../services/completionTabs";
 import { reportStatusLabel } from "../services/status";
 import { absoluteTime, relativeTime } from "../services/time";
+import { tintFor } from "../services/tint";
 
 function initials(name = "") {
   return name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
@@ -20,6 +21,7 @@ export default function CompletionList({
   counts,
   query,
   elsewhere,
+  openShortcuts,
 }) {
   const active = tabFor(tab);
   const searching = Boolean(query.trim());
@@ -53,6 +55,11 @@ export default function CompletionList({
           <span>to move</span>
           <kbd>/</kbd>
           <span>to search</span>
+          {/* The hint that says there are more hints. A shortcut nobody can
+              discover is a shortcut nobody has. */}
+          <button type="button" className="kbdMore" onClick={openShortcuts}>
+            <kbd>?</kbd>
+          </button>
         </p>
       </div>
 
@@ -132,7 +139,12 @@ export default function CompletionList({
                 s.status,
               )}${arrived ? `, received ${arrived}` : ""}`}
             >
-              <div className="avatar">{initials(s.student_name || "?")}</div>
+              <div
+                className="avatar"
+                style={{ "--tint": tintFor(s.student_name || "?") }}
+              >
+                {initials(s.student_name || "?")}
+              </div>
 
               <div className="rowMain">
                 <div className="rowName">{s.student_name || "Unnamed student"}</div>
