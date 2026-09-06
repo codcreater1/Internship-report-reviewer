@@ -119,3 +119,35 @@ def test_bad_request_is_recognised_by_status_or_class_name(monkeypatch, exc):
 
     assert call() == {"ok": True}
     assert len(calls) == 2
+
+
+def test_every_call_carries_the_deadline(monkeypatch):
+    """The timeout travels with the request, not only with the client.
+
+    The client is constructed with it too, but the client is whichever OpenAI
+    class is in play — LangFuse wraps it in production — and a wrapper that
+    drops the constructor argument restores the SDK's ten-minute default. The
+    symptom is a submission returning as a gateway timeout at the proxy's
+    limit while the service is still waiting on a model that was supposed to
+    give up long before.
+    """
+    from app.core.config import settings
+
+    calls = _stub(monkeypatch, ['{"ok": true}'])
+    monkeypatch.setattr(settings, "llm_timeout_seconds", 12.0)
+
+    assert call() == {"ok": True}
+    assert calls[0]["timeout"] == 12.0
+
+
+def test_the_deadline_survives_the_retry_without_response_format(monkeypatch):
+    """Dropping response_format must not drop the deadline with it."""
+    from app.core.config import settings
+
+    calls = _stub(monkeypatch, [BadRequestError(), '{"ok": true}'])
+    monkeypatch.setattr(settings, "llm_timeout_seconds", 12.0)
+
+    assert call() == {"ok": True}
+    assert len(calls) == 2
+    assert "response_format" not in calls[1]
+    assert calls[1]["timeout"] == 12.0

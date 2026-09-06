@@ -130,6 +130,15 @@ def complete_json(
         response_format={"type": "json_object"},
         temperature=0.2,
         max_tokens=max_tokens,
+        # Per call, not only on the client. The constructor already carries
+        # this deadline, but the client is whichever OpenAI class is in play -
+        # the plain SDK or LangFuse's wrapper around it - and a wrapper that
+        # does not forward the constructor argument leaves the SDK's ten-minute
+        # default in force. That is not hypothetical: submissions were coming
+        # back as gateway timeouts at thirty seconds with the client built for
+        # twelve, which only happens if the client's deadline never arrived.
+        # Passed here it goes through the same call the wrapper forwards.
+        timeout=settings.llm_timeout_seconds,
     )
     if _langfuse_enabled():
         kwargs["name"] = trace_name
