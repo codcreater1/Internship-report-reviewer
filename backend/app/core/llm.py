@@ -48,8 +48,16 @@ def _is_overloaded(exc: Exception) -> bool:
     about the request and everything about the minute it arrived in. That is
     the one failure worth trying again; a 400, a bad key or a dead network
     would give the same answer twice.
+
+    A 429 is not that failure, though it was treated as one here. It means a
+    quota is spent, and Gemini's free tier spends by the day: the deployment's
+    log shows `limit: 20` requests per day for the model, with the refusal
+    carrying a retryDelay of forty-odd seconds. Retrying it after 1.5s cannot
+    succeed — and each attempt is itself a request against the quota that
+    refused it. One advisory pass turned into three refusals, so the reading
+    that emptied the budget emptied it three times as fast.
     """
-    return getattr(exc, "status_code", None) in (429, 503)
+    return getattr(exc, "status_code", None) == 503
 
 
 # Long enough for a demand spike to pass, short enough that a caller waiting on

@@ -151,3 +151,38 @@ def test_the_deadline_survives_the_retry_without_response_format(monkeypatch):
     assert len(calls) == 2
     assert "response_format" not in calls[1]
     assert calls[1]["timeout"] == 12.0
+
+
+class OverloadedError(Exception):
+    """Shaped like the SDK's 503: the provider is busy, the request is fine."""
+
+    status_code = 503
+
+
+class RateLimitError(Exception):
+    """Shaped like the SDK's 429: a quota is spent."""
+
+    status_code = 429
+
+
+def test_a_busy_provider_is_tried_again(monkeypatch):
+    calls = _stub(monkeypatch, [OverloadedError(), '{"ok": true}'])
+    monkeypatch.setattr(llm, "_OVERLOAD_BACKOFF_SECONDS", 0)
+
+    assert llm.complete_json(system="s", user="u", schema=SCHEMA, retries=2) == {"ok": True}
+    assert len(calls) == 2
+
+
+def test_a_spent_quota_is_not_tried_again(monkeypatch):
+    """Retrying a 429 cannot work, and spends the quota that refused it.
+
+    Gemini's free tier counts by the day — the deployment's refusals name a
+    limit of twenty requests and ask for a retry in forty-odd seconds. A 1.5s
+    backoff never clears that, so each retry was one more request against an
+    exhausted budget: three refusals where one was already the answer.
+    """
+    calls = _stub(monkeypatch, [RateLimitError(), '{"ok": true}'])
+    monkeypatch.setattr(llm, "_OVERLOAD_BACKOFF_SECONDS", 0)
+
+    assert llm.complete_json(system="s", user="u", schema=SCHEMA, retries=2) is None
+    assert len(calls) == 1
