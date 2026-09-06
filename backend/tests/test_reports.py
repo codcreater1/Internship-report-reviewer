@@ -948,3 +948,32 @@ def test_the_package_is_stored_before_the_model_is_asked_anything(monkeypatch, p
     # And the better wording still reaches the caller and the stored row.
     assert body["email_subject"] == "Drafted"
     assert report_repository.get_by_id(body["id"]).email_subject == "Drafted"
+
+
+def test_health_names_the_model_it_would_call(monkeypatch):
+    """`ai_enabled` says a key exists, not that the model id is reachable.
+
+    A key plus a retired id is a service reporting itself healthy while every
+    call comes back 404 — which happened, and took a container log to explain.
+    The id is the first thing anyone asks for, so the probe carries it.
+    """
+    from app.core import llm
+    from app.core.config import settings
+
+    monkeypatch.setattr(llm, "is_enabled", lambda: True)
+    monkeypatch.setattr(settings, "llm_model", "gemini-3.6-flash")
+
+    body = client.get("/health").json()
+    assert body["ai_enabled"] is True
+    assert body["llm_model"] == "gemini-3.6-flash"
+
+
+def test_health_names_no_model_when_there_is_none(monkeypatch):
+    """With no key there is no call to make, so there is no id to report."""
+    from app.core import llm
+
+    monkeypatch.setattr(llm, "is_enabled", lambda: False)
+
+    body = client.get("/health").json()
+    assert body["ai_enabled"] is False
+    assert body["llm_model"] is None
