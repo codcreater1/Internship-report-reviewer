@@ -205,9 +205,24 @@ class ReportService:
         *,
         report_body: str,
     ) -> ReportSubmissionResponse:
-        """Compose the outputs, index the report, and store the row."""
+        """Store the row, then try to improve the email that went with it.
+
+        The order matters more than it looks. The verdict is settled by the
+        time this runs — deterministic checks decided it, and the model has no
+        say in it — so the row is written first, carrying the templated email,
+        and the drafted one is attempted afterwards against a package that is
+        already recorded.
+
+        Written the other way round, a model call that does not come back takes
+        the submission with it: the caller waits until the proxy in front of
+        this service gives up, receives a gateway error, and the package is
+        nowhere — not in the queue, not in the audit trail, not resendable
+        without the student being told to resend. That happened to roughly one
+        submission in three against the deployment. A student's paperwork is
+        not an acceptable price for a nicer covering letter.
+        """
         submission.report = _coordinator_summary(submission)
-        submission.email_subject, submission.email_body = self._build_email(submission)
+        submission.email_subject, submission.email_body = _template_email(submission)
 
         # Only accepted reports join the corpus. Indexing a rejected one would
         # let a copy poison the index against its original; indexing a
@@ -234,6 +249,15 @@ class ReportService:
             len(submission.clarifications),
             len(submission.warnings),
         )
+
+        # Now that losing it costs only the wording, ask the model for a better
+        # letter. Everything the student must be told is already in the stored
+        # template, so a draft that never arrives changes nothing.
+        drafted = self._ai_email(submission)
+        if drafted is not None:
+            submission.email_subject, submission.email_body = drafted
+            report_repository.update(submission)
+
         return submission
 
     # ------------------------------------------------------------------ #
@@ -519,20 +543,6 @@ class ReportService:
     # ------------------------------------------------------------------ #
     # Student-facing email
     # ------------------------------------------------------------------ #
-
-    def _build_email(self, submission: ReportSubmissionResponse) -> tuple[str, str]:
-        """Draft the student's email, with a static template as fallback.
-
-        The model personalises the wording, and if it
-        is unavailable the templates still say everything the student needs.
-        The remedies are passed in as data either way, so a drafted email and a
-        templated one ask for exactly the same things.
-        """
-        ai = self._ai_email(submission)
-        if ai is not None:
-            return ai
-
-        return _template_email(submission)
 
     def _ai_email(self, submission: ReportSubmissionResponse) -> tuple[str, str] | None:
         if not llm.is_enabled():

@@ -913,3 +913,38 @@ def test_a_drafted_email_is_told_the_student_s_name(monkeypatch):
     assert ReportService()._ai_email(submission) == ("s", "b")
     assert "Zofia Wiśniewska" in seen["user"]
     assert "addressing the student by the name" in seen["system"]
+
+
+def test_the_package_is_stored_before_the_model_is_asked_anything(monkeypatch, packages):
+    """A model call that never returns must not take the submission with it.
+
+    The verdict is settled before the email is drafted, so the row is written
+    first and the draft is attempted against a package that is already
+    recorded. Written the other way round, a hanging call meant the caller
+    waited for the proxy to give up and the package was nowhere — roughly one
+    submission in three against the deployment.
+
+    The stub asserts from inside the call: by the time the model is consulted,
+    the row must already be readable.
+    """
+    from app.core import llm
+    from app.services import report_repository
+
+    stored_during_call = {}
+
+    def fake(*, system, user, schema, retries=0, trace_name="", **kw):
+        # Whatever the submission's id turned out to be, it is in the queue.
+        stored_during_call["rows"] = [s.id for s in report_repository.list_all()]
+        return {"subject": "Drafted", "body": "Drafted body"}
+
+    monkeypatch.setattr(llm, "is_enabled", lambda: True)
+    monkeypatch.setattr(llm, "complete_json", fake)
+
+    response = submit(packages["clean"])
+    assert response.status_code == 201
+    body = response.json()
+
+    assert body["id"] in stored_during_call["rows"]
+    # And the better wording still reaches the caller and the stored row.
+    assert body["email_subject"] == "Drafted"
+    assert report_repository.get_by_id(body["id"]).email_subject == "Drafted"
