@@ -281,7 +281,7 @@ A certificate is an institutional claim about a real person. The question that e
 cd backend && pytest
 ```
 
-79 tests, hermetic and offline — no network, temp database. That is possible precisely because nothing in the decision path calls an API.
+88 tests, hermetic and offline — no network, temp database. That is possible precisely because nothing in the decision path calls an API.
 
 The gate tests break one property of a valid package and assert the finding **and its severity**. Severity is the part worth asserting: a check that rejects where it should ask for a correction refuses a student for something they could have fixed, and "some finding fired" would not catch it. The API tests run real generated PDFs through the full HTTP surface — real text extraction, real certificate rendering, real signature embedding.
 

@@ -31,3 +31,4 @@ Thumbs.db
 # Conformance run output
 testdocs/conformance/pkgs/
 testdocs/conformance/results.json
+.claude/

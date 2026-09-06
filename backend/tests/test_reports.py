@@ -875,3 +875,41 @@ def test_the_rules_are_looked_for_where_both_layouts_put_them():
         rules_module._CANDIDATE_RULES_PATHS
     )
     assert rules_module.DEFAULT_RULES_PATH.is_file()
+
+
+def test_a_drafted_email_is_told_the_student_s_name(monkeypatch):
+    """The drafted email has to greet the student the template already greets.
+
+    Without the name in the payload the model has nothing to address and opens
+    with a bare "Hello," — a drafted email that reads worse than the template
+    it exists to improve on. Live submissions came back that way before the
+    name was passed.
+    """
+    from types import SimpleNamespace
+
+    from app.core import llm
+    from app.services.report_service import ReportService
+
+    seen = {}
+
+    def fake(*, system, user, schema, retries=0, trace_name="", **kw):
+        seen["system"] = system
+        seen["user"] = user
+        return {"subject": "s", "body": "b"}
+
+    monkeypatch.setattr(llm, "is_enabled", lambda: True)
+    monkeypatch.setattr(llm, "complete_json", fake)
+
+    submission = SimpleNamespace(
+        id="abc123",
+        status=STATUS_APPROVED,
+        student_name="Zofia Wiśniewska",
+        counted_working_days=30,
+        evaluation_score=84,
+        clarifications=[],
+        rejections=[],
+    )
+
+    assert ReportService()._ai_email(submission) == ("s", "b")
+    assert "Zofia Wiśniewska" in seen["user"]
+    assert "addressing the student by the name" in seen["system"]
