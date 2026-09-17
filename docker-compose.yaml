@@ -14,7 +14,7 @@ services:
       - 'REVIEW_CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:80"]}'
       - 'REVIEW_API_SECRET_KEY=${API_SECRET_KEY:-}'
       - REVIEW_STORAGE_ROOT=/data/tmp
-      - REVIEW_DB_PATH=/data/submissions_eval.db
+      - REVIEW_DB_PATH=/data/submissions_v2.db
     networks:
       - coolify
       - default
